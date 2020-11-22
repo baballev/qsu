@@ -49,15 +49,15 @@ def move_to_songs(star=1):
     hc = pyclick.HumanClicker()
     time.sleep(2)
     delta_t = random.random()
-    hc.move((496, 325), delta_t*1.5)
+    hc.move((496, 325), delta_t*1.5+0.3)
     hc.click()
     time.sleep(0.2)
     delta_t = random.random()
-    hc.move((660, 210), delta_t*1.5)
+    hc.move((660, 210), delta_t*1.5+0.3)
     hc.click()
     time.sleep(0.5)
     delta_t = random.random()
-    hc.move((760, 250), delta_t*1.5)
+    hc.move((760, 250), delta_t*1.5+0.3)
     hc.click()
     delta_t = random.random()
     time.sleep(delta_t + 1)
@@ -94,6 +94,60 @@ def launch_random_beatmap():
     time.sleep(0.3)
     hc.move((500, 320), 0.3)
     time.sleep(0.2)
+    return
+
+
+def enable_nofail():
+    hc = pyclick.HumanClicker()
+    time.sleep(0.25)
+    hc.move((275, 590), 0.4)
+    time.sleep(0.1)
+    hc.click()
+    time.sleep(0.3)
+    hc.move((385, 195), 0.5)
+    time.sleep(0.05)
+    hc.click()
+    time.sleep(0.2)
+    hc.move((350, 520), 0.6)
+    time.sleep(0.15)
+    hc.click()
+    time.sleep(0.2)
+    hc.move((150, 520), 0.7)
+    time.sleep(0.2)
+    return
+
+
+def reset_mods():
+    hc = pyclick.HumanClicker()
+    time.sleep(0.25)
+    hc.move((275, 590), 0.4)
+    time.sleep(0.1)
+    hc.click()
+    time.sleep(0.3)
+    hc.move((670, 450), 0.8)
+    time.sleep(0.3)
+    hc.click()
+    time.sleep(0.2)
+    hc.move((504, 518), 0.5)
+    time.sleep(0.1)
+    hc.click()
+    time.sleep(0.4)
+    hc.move((400, 360), 0.8)
+    time.sleep(0.3)
+    return
+
+
+def return_to_beatmap():
+    time.sleep(3)
+    hc = pyclick.HumanClicker()
+    hc.move((480, 370), 0.2)
+    time.sleep(0.05)
+    hc.click()
+    time.sleep(0.05)
+    hc.move((50, 605), 0.6)
+    time.sleep(0.15)
+    hc.click()
+    time.sleep(0.8)
     return
 
 

@@ -17,12 +17,12 @@ class Actor(nn.Module):
         self.channels = channels
         self.action_dim = action_dim
 
-        self.conv1 = nn.Conv2d(self.channels, 16, kernel_size=5, stride=2)
-        self.bn1 = nn.BatchNorm2d(16)
-        self.conv2 = nn.Conv2d(16, 32, kernel_size=5, stride=2)
-        self.bn2 = nn.BatchNorm2d(32)
-        self.conv3 = nn.Conv2d(32, 32, kernel_size=5, stride=2)
-        self.bn3 = nn.BatchNorm2d(32)
+        self.conv1 = nn.Conv2d(self.channels, 8, kernel_size=5, stride=2)
+        self.bn1 = nn.BatchNorm2d(8)
+        self.conv2 = nn.Conv2d(8, 16, kernel_size=5, stride=2)
+        self.bn2 = nn.BatchNorm2d(16)
+        self.conv3 = nn.Conv2d(16, 16, kernel_size=5, stride=2)
+        self.bn3 = nn.BatchNorm2d(16)
 
         def conv2d_size_out(size, kernel_size=5, stride=2):
             return (size - (kernel_size - 1) - 1) // stride + 1
@@ -35,8 +35,7 @@ class Actor(nn.Module):
         print('Conv output width: ' + str(convw))
         print('Conv output height: ' + str(convh))
 
-
-        self.fc = nn.Linear(convh * convw * 32, action_dim)
+        self.fc = nn.Linear(convh * convw * 16, action_dim)
 
     def forward(self, x):
         x = F.relu(self.bn1(self.conv1(x)))
@@ -55,10 +54,10 @@ class Critic(nn.Module):
         self.channels = channels
         self.action_dim = action_dim
 
-        self.convs1 = nn.Conv2d(self.channels, 16, kernel_size=5, stride=2)
-        self.bns1 = nn.BatchNorm2d(16)
-        self.convs2 = nn.Conv2d(16, 32, kernel_size=5, stride=2)
-        self.bns2 = nn.BatchNorm2d(32)
+        self.convs1 = nn.Conv2d(self.channels, 8, kernel_size=5, stride=2)
+        self.bns1 = nn.BatchNorm2d(8)
+        self.convs2 = nn.Conv2d(8, 16, kernel_size=5, stride=2)
+        self.bns2 = nn.BatchNorm2d(16)
 
         def conv2d_size_out(size, kernel_size=5, stride=2):
             return (size - (kernel_size - 1) - 1) // stride + 1
@@ -71,7 +70,7 @@ class Critic(nn.Module):
         print('Conv output width: ' + str(convw))
         print('Conv output height: ' + str(convh))
 
-        self.fcs3 = nn.Linear(convh * convw * 32, 128)
+        self.fcs3 = nn.Linear(convh * convw * 16, 128)
 
         self.fca1 = nn.Linear(self.action_dim, 128)
 

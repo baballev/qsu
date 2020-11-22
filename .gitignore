@@ -1,5 +1,6 @@
 .idea/
 __pycache__/
 backup_osu!/
+weights/
 papers&references/
 utils/osu!.OMBest.cfg
