@@ -94,10 +94,10 @@ def train(episode_nb, learning_rate):
 
     actor = models.Actor().to(device)
     target_actor = models.Actor().to(device)
-    utils.copy.hard_copy(target_actor, actor)
+    utils.network_updates.hard_copy(target_actor, actor)
     critic = models.Critic().to(device)
     target_critic = models.Critic().to(device)
-    utils.copy.hard_copy(target_critic, critic)
+    utils.network_updates.hard_copy(target_critic, critic)
 
     actor_optimizer = torch.optim.Adam(actor.parameters(), learning_rate)
     critic_optimizer = torch.optim.Adam(critic.parameters(), learning_rate)
