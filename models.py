@@ -1,6 +1,11 @@
 import torch
 import torch.nn as nn
-import torch.functional as F
+import torch.nn.functional as F
+
+
+## IMPORTANT NOTE: THE LARGE MAJORITY of the code was taken or inspired from:
+## https://github.com/vy007vikas/PyTorch-ActorCriticRL/
+## All credits go to vy007vikas for the nice Pytorch continuous action actor-critic DDPG she/he/they made.
 
 
 class Actor(nn.Module):
@@ -76,7 +81,7 @@ class Critic(nn.Module):
     def forward(self, state, action):  # Compute an approximate Q(s, a) value function
         state = F.relu(self.bns1(self.convs1(state)))
         state = F.relu(self.bns2(self.convs2(state)))
-        state = F.relu(self.fcs3(state))
+        state = F.relu(self.fcs3(state.view(state.size(0), -1)))
 
         action = F.relu(self.fca1(action))
 
@@ -84,6 +89,9 @@ class Critic(nn.Module):
         x = F.relu(self.fc1(x))
         x = self.fc2(x)
         return x
+
+
+## Not Used ATM
 
 
 class CNN(nn.Module):  # ToDo: IMPORTANT: THIS Could be used for making a model of the environment? But not sure that it is necessary.
