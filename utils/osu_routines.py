@@ -8,7 +8,7 @@ import random
 import pyautogui
 
 from utils.osu_config import OSU_FOLDER_PATH, swap_to_AI, restore_player, USERNAME, AI_NAME
-
+import utils.OCR
 
 def start_osu():
     try:
@@ -137,13 +137,21 @@ def reset_mods():
     return
 
 
-def return_to_beatmap():
+def return_to_beatmap(screen):
     time.sleep(3)
     hc = pyclick.HumanClicker()
+    '''
+    if utils.OCR.check_stuck_social(screen):
+        time.sleep(0.5)
+        hc.move((992, 616), 0.5)
+        time.sleep(0.2)
+        hc.click()
+    '''
     hc.move((480, 370), 0.2)
-    time.sleep(0.05)
+    time.sleep(0.1)
     hc.click()
-    time.sleep(0.05)
+    time.sleep(0.4)
+    hc.click()
     hc.move((50, 605), 0.6)
     time.sleep(0.15)
     hc.click()
@@ -154,6 +162,7 @@ def return_to_beatmap():
 ## DEBUG
 if __name__ == '__main__':
 
-    osu_process = start_osu()
-    time.sleep(20)
-    stop_osu(osu_process)
+    process = start_osu()
+    import utils.mouse_locator
+    utils.mouse_locator.mouse_locator()
+    # stop_osu(process)

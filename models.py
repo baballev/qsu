@@ -58,19 +58,21 @@ class Critic(nn.Module):
         self.bns1 = nn.BatchNorm2d(8)
         self.convs2 = nn.Conv2d(8, 16, kernel_size=5, stride=2)
         self.bns2 = nn.BatchNorm2d(16)
+        self.convs3 = nn.Conv2d(16, 16, kernel_size=5, stride=2)
+        self.bns3 = nn.BatchNorm2d(16)
 
         def conv2d_size_out(size, kernel_size=5, stride=2):
             return (size - (kernel_size - 1) - 1) // stride + 1
 
-        convw = conv2d_size_out(conv2d_size_out(width))
-        convh = conv2d_size_out(conv2d_size_out(height))
+        convw = conv2d_size_out(conv2d_size_out(conv2d_size_out(width)))
+        convh = conv2d_size_out(conv2d_size_out(conv2d_size_out(height)))
 
         ## DEBUG
         print('Critic conv output size for state: ')
         print('Conv output width: ' + str(convw))
         print('Conv output height: ' + str(convh))
 
-        self.fcs3 = nn.Linear(convh * convw * 16, 128)
+        self.fcs4 = nn.Linear(convh * convw * 16, 128)
 
         self.fca1 = nn.Linear(self.action_dim, 128)
 
@@ -80,7 +82,8 @@ class Critic(nn.Module):
     def forward(self, state, action):  # Compute an approximate Q(s, a) value function
         state = F.relu(self.bns1(self.convs1(state)))
         state = F.relu(self.bns2(self.convs2(state)))
-        state = F.relu(self.fcs3(state.view(state.size(0), -1)))
+        state = F.relu(self.bns3(self.convs3(state)))
+        state = F.relu(self.fcs4(state.view(state.size(0), -1)))
 
         action = F.relu(self.fca1(action))
 

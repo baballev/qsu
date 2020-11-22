@@ -9,6 +9,7 @@ import pyautogui
 import gc
 import torch.nn.functional as F
 from threading import Thread
+import pytessy
 
 import utils.screen
 import utils.osu_routines
@@ -19,9 +20,9 @@ import models
 from memory import ReplayMemory
 
 BATCH_SIZE = 5
-LEARNING_RATE = 0.01
+LEARNING_RATE = 0.001
 GAMMA = 0.999
-TAU = 0.01
+TAU = 0.001
 MAX_STEPS = 5000000
 # MAX_STEPS = 15
 
@@ -73,7 +74,7 @@ def save_model(model, file_name, number, qual):
 
 def load_models(weights_path, actor, critic, target_actor, target_critic):
     actor.load_state_dict(torch.load(weights_path[0]))
-    critic.load_state_dict(torch.laod(weights_path[1]))
+    critic.load_state_dict(torch.load(weights_path[1]))
     utils.network_updates.hard_copy(target_actor, actor)
     utils.network_updates.hard_copy(target_critic, critic)
     return
@@ -81,37 +82,28 @@ def load_models(weights_path, actor, critic, target_actor, target_critic):
 
 def perform_action(action, human_clicker, actor):
     t = torch.squeeze(action, 0).cpu()  # ToDo: Check for memory leak
-    # print(t)
-    x, y = int(t[0].item()), int(t[1].item()*(1024/600))
-    # print('(x, y) = (' + str(x) + ', ' + str(y) + ')')
-    changed = False
+    x, y = int(t[0].item()), int(t[1].item()*(600/1024))
     if t[2].item() < (actor.width / 2):
         change_click('left', mouse_state)
-        changed = True
     if t[3].item() < (actor.width / 2):
         change_click('right', mouse_state)
-        changed = True
     del t
-    if y < 50 or y > 600:
-        return x, y, changed
-    elif x > 1024:
-        return x, y, changed
-    else:
-        thread = Thread(target=threaded_mouse_move, args=(x, y+29, 0.1, human_clicker))
+    if y < 70:
+        thread = Thread(target=threaded_mouse_move, args=(min(x, 950), 70+26, 0.1, human_clicker))
         thread.start()
-        return x, y, changed
-
-
-def get_reward(score, previous_score, x, y, previous_x, previous_y, changed):
-    ALPHA = 0.00001
-    BETA = 0.00001
-    C = 0.0001
-    if changed:
-        value = 1
+    elif y > 560:
+        thread = Thread(target=threaded_mouse_move, args=(min(x, 950), 586, 0.1, human_clicker))
+        thread.start()
+    elif x > 874:
+        thread = Thread(target=threaded_mouse_move, args=(874, y+26, 0.1, human_clicker))
+        thread.start()
     else:
-        value = 0
-    return max((score - previous_score), 0) - ALPHA * (((previous_x - x) ** 2 + (previous_y - y) ** 2)) - BETA * (
-                max(x - 1024, 0) + max(y - 600, 0)) + C * value
+        thread = Thread(target=threaded_mouse_move, args=(x, y+26, 0.1, human_clicker))
+        thread.start()
+
+
+def get_reward(score, previous_score):
+    return 0.8 * max((score - previous_score), 0)
 
 
 def optimize(actor_optimizer, critic_optimizer, memory, actor, critic, target_actor, target_critic):
@@ -168,34 +160,28 @@ def train(episode_nb, learning_rate, load_weights=None):
 
     screen = utils.screen.init_screen(capture_output="pytorch_float_gpu")
     hc = pyclick.HumanClicker()
-    for i in range(episode_nb + 1):
+    for i in range(episode_nb):
         utils.osu_routines.launch_random_beatmap()
         time.sleep(1)
-        last_screen = utils.screen.get_screen(screen)
+
         current_screen = utils.screen.get_screen(screen)
         previous_score = 0
-        state = torch.unsqueeze((current_screen - last_screen).permute(2, 0, 1), 0)
-
+        state = torch.unsqueeze(current_screen.permute(2, 0, 1), 0)
         fail_read_counter = 0
         episode_average_reward = 0
+        delta_t = 0
+        start = time.time()
         for step in range(MAX_STEPS):
             action = select_exploration_action(state, actor)
-            previous_x, previous_y = pyautogui.position()
-            previous_y -= 29
-            x, y, changed = perform_action(action, hc, actor)
-            score = utils.OCR.get_score(screen)
-            if step < 50 and score == -1:
-                score = 0
-            reward = get_reward(score, previous_score, x, y, previous_x, previous_y, changed)
-            if reward > 1000:
-                reward = 0
-            last_screen = current_screen
+            perform_action(action, hc, actor)
             current_screen = utils.screen.get_screen(screen)
-            # current_screen = screen.get_latest_frame() ToDo: test this one, does it gets the last screenshot that has been done and is it in the buffer?
-            #  ToDo: it could prevent small differences between the image used for score and the new state
+            score = utils.OCR.get_score(screen)
+            if (step < 50 and score == -1) or (score - previous_score) > 1000000:
+                score = 0
+            reward = get_reward(score, previous_score)
 
             if score == -1:
-                if fail_read_counter > 8:
+                if fail_read_counter > 6:
                     done = True  # ToDo: Code an OCR function to check?
                 else:
                     fail_read_counter += 1
@@ -205,44 +191,53 @@ def train(episode_nb, learning_rate, load_weights=None):
             if done:
                 new_state = None
             else:
-                new_state = torch.unsqueeze((current_screen - last_screen).permute(2, 0, 1), 0)
-                memory.push(torch.squeeze(state, 0), torch.squeeze(action, 0), torch.tensor(reward).to(device),
-                            torch.squeeze(new_state, 0))
+                new_state = torch.unsqueeze(current_screen.permute(2, 0, 1), 0)
+                th = Thread(target=memory.push, args=(torch.squeeze(state, 0), torch.squeeze(action, 0), torch.tensor(reward).to(device),
+                            torch.squeeze(new_state, 0)))
+                th.start()
+                # memory.push(torch.squeeze(state, 0), torch.squeeze(action, 0), torch.tensor(reward).to(device), torch.squeeze(new_state, 0))
 
-            if step % 10 == 0:
-                optimize(actor_optimizer, critic_optimizer, memory, actor, critic, target_actor, target_critic)
+            state = new_state
+            if step % 5 == 0:
+                thread = Thread(target=optimize, args=(actor_optimizer, critic_optimizer, memory, actor, critic, target_actor, target_critic))
+                thread.start()
 
             episode_average_reward += reward
 
             previous_score = score
             if done:
                 episode_average_reward = episode_average_reward/step
+                delta_t /= step
                 break
 
+            end = time.time()
+            delta_t += (end - start)
+            start = end
         print('Average episode reward: ' + str(episode_average_reward))
-
+        print('Average time(s) per step: ' + str(delta_t))
         gc.collect()  # Garbage collector at each episode
-        # ToDo: Save / Load model
-        # ToDo: Verbose
-        if i%5 == 0:
-            save_model(target_actor, 'first_tests', i, '_actor')
-            save_model(target_critic, 'first_tests', i, '_critic')
 
-        utils.osu_routines.return_to_beatmap()
+        if i % 5 == 0 and i > 0:
+            save_model(target_actor, 'first_tests2', i, '_actor')
+            save_model(target_critic, 'first_tests2', i, '_critic')
 
-    if episode_nb % 5 != 0:
-        save_model(target_actor, 'first_tests', episode_nb, '_actor')
-        save_model(target_critic, 'first_tests', episode_nb, '_critic')
+        utils.osu_routines.return_to_beatmap(screen)
 
+    if (episode_nb - 1) % 5 != 0:
+        save_model(target_actor, 'first_tests2', episode_nb, '_actor')
+        save_model(target_critic, 'first_tests2', episode_nb, '_critic')
 
     screen.stop()
     utils.osu_routines.stop_osu(process)
 
 
 if __name__ == '__main__':
-    train(12, LEARNING_RATE)
+    weights_path = ('./weights/first_tests_actor5.pt', './weights/first_tests_critic5.pt')
+    train(450, LEARNING_RATE, weights_path)
     print(utils.noise.t)
-    # process = utils.osu_routines.start_osu()
-    # import utils.mouse_locator
-    # utils.mouse_locator.mouse_locator()
-    # utils.osu_routines.stop_osu(process)
+
+
+
+
+
+

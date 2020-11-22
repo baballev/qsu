@@ -1,8 +1,8 @@
 import torch
 import math
 EPS_START = 0.9
-EPS_END = 0.05
-EPS_DECAY = 5000
+EPS_END = 0.1
+EPS_DECAY = 50000
 
 ## IMPORTANT NOTE: THE LARGE MAJORITY of the code was taken or inspired from:
 ## https://github.com/vy007vikas/PyTorch-ActorCriticRL/
