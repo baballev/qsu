@@ -4,7 +4,7 @@ import torch.functional as F
 
 class Actor(nn.Module):
 
-    def __init__(self, height=600, width=1024, action_dim=5): # action dim: x, y, delta_t, right_click, left_click
+    def __init__(self, height=600, width=1024, action_dim=4): # action dim: x, y, right_click, left_click
         super(Actor, self).__init__()
         self.height = height
         self.width = width
@@ -31,6 +31,12 @@ class Actor(nn.Module):
         x = F.relu(self.bn3(self.conv3(x)))
         return torch.sigmoid(self.fc(x.view(x.size(0), -1))) * self.width
 
+class Critic(nn.Module):
+
+    def __init__(self):
+        pass
+
+
 
 class CNN(nn.Module):
     ''' Input: Image i.e the game screen
@@ -39,7 +45,7 @@ class CNN(nn.Module):
     '''
 
     def __init__(self, height=600, width=1024, outputs=1024): # ToDo number of outputs to determine
-        super(DQN, self).__init__()
+        super(CNN, self).__init__()
         # ToDo: Try to implement with ROI so that we get more relevant feature maps like in masking-RCNN?
         self.conv1 = nn.Conv2d(3, 16, kernel_size=5, stride=2)
         self.bn1 = nn.BatchNorm2d(16)
