@@ -14,6 +14,10 @@ def get_screen(capturer):
     return capturer.screenshot(region=WINDOW_REGION)
 
 
+def get_screen_region(capturer, region):
+    return capturer.screenshot(region=region)
+
+
 def save_screen(capturer, output_dir, output_name):
     capturer.screenshot_to_disk(output_dir, output_name, region=WINDOW_REGION)
 

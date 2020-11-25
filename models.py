@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
+import torchvision.transforms as transforms
 
 ## IMPORTANT NOTE: THE LARGE MAJORITY of the code was taken or inspired from:
 ## https://github.com/vy007vikas/PyTorch-ActorCriticRL/
@@ -10,7 +10,7 @@ import torch.nn.functional as F
 
 class Actor(nn.Module):
 
-    def __init__(self, height=600, width=1024, channels=3, action_dim=4): # action dim: x, y, right_click, left_click
+    def __init__(self, height=600, width=1024, channels=1, action_dim=4): # action dim: x, y, right_click, left_click
         super(Actor, self).__init__()
         self.height = height
         self.width = width
@@ -23,12 +23,14 @@ class Actor(nn.Module):
         self.bn2 = nn.BatchNorm2d(16)
         self.conv3 = nn.Conv2d(16, 16, kernel_size=5, stride=2)
         self.bn3 = nn.BatchNorm2d(16)
+        self.conv4 = nn.Conv2d(16, 16, kernel_size=3, stride=2)
+        self.bn4 = nn.BatchNorm2d(16)
 
         def conv2d_size_out(size, kernel_size=5, stride=2):
             return (size - (kernel_size - 1) - 1) // stride + 1
 
-        convw = conv2d_size_out(conv2d_size_out(conv2d_size_out(width)))
-        convh = conv2d_size_out(conv2d_size_out(conv2d_size_out(height)))
+        convw = conv2d_size_out(conv2d_size_out(conv2d_size_out(conv2d_size_out(width))), kernel_size=3)
+        convh = conv2d_size_out(conv2d_size_out(conv2d_size_out(conv2d_size_out(height))), kernel_size=3)
 
         ## DEBUG
         print('Actor conv output size:')
@@ -41,12 +43,14 @@ class Actor(nn.Module):
         x = F.relu(self.bn1(self.conv1(x)))
         x = F.relu(self.bn2(self.conv2(x)))
         x = F.relu(self.bn3(self.conv3(x)))
+        x = F.relu(self.bn4(self.conv4(x)))
+
         return torch.sigmoid(self.fc(x.view(x.size(0), -1))) * self.width
 
 
 class Critic(nn.Module):
 
-    def __init__(self, height=600, width=1024, channels=3, action_dim=4):
+    def __init__(self, height=600, width=1024, channels=1, action_dim=4):
         super(Critic, self).__init__()
 
         self.width = width
@@ -60,12 +64,14 @@ class Critic(nn.Module):
         self.bns2 = nn.BatchNorm2d(16)
         self.convs3 = nn.Conv2d(16, 16, kernel_size=5, stride=2)
         self.bns3 = nn.BatchNorm2d(16)
+        self.convs4 = nn.Conv2d(16, 16, kernel_size=3, stride=2)
+        self.bns4 = nn.BatchNorm2d(16)
 
         def conv2d_size_out(size, kernel_size=5, stride=2):
             return (size - (kernel_size - 1) - 1) // stride + 1
 
-        convw = conv2d_size_out(conv2d_size_out(conv2d_size_out(width)))
-        convh = conv2d_size_out(conv2d_size_out(conv2d_size_out(height)))
+        convw = conv2d_size_out(conv2d_size_out(conv2d_size_out(conv2d_size_out(width))), kernel_size=3)
+        convh = conv2d_size_out(conv2d_size_out(conv2d_size_out(conv2d_size_out(height))), kernel_size=3)
 
         ## DEBUG
         print('Critic conv output size for state: ')
@@ -83,6 +89,7 @@ class Critic(nn.Module):
         state = F.relu(self.bns1(self.convs1(state)))
         state = F.relu(self.bns2(self.convs2(state)))
         state = F.relu(self.bns3(self.convs3(state)))
+        state = F.relu(self.bns4(self.convs4(state)))
         state = F.relu(self.fcs4(state.view(state.size(0), -1)))
 
         action = F.relu(self.fca1(action))

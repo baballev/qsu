@@ -47,15 +47,17 @@ def stop_osu(process):
 
 def move_to_songs(star=1):
     hc = pyclick.HumanClicker()
-    time.sleep(2)
+    time.sleep(1)
     delta_t = random.random()
     hc.move((496, 325), delta_t*1.5+0.3)
     hc.click()
     time.sleep(0.2)
+    hc.click()
+    time.sleep(0.1)
     delta_t = random.random()
     hc.move((660, 210), delta_t*1.5+0.3)
     hc.click()
-    time.sleep(0.5)
+    time.sleep(0.3)
     delta_t = random.random()
     hc.move((760, 250), delta_t*1.5+0.3)
     hc.click()
@@ -83,12 +85,11 @@ def move_to_songs(star=1):
 def launch_random_beatmap():
     hc = pyclick.HumanClicker()
     time.sleep(0.25)
-    t = random.random()
-    hc.move((338, 594), 0.25 + t)
+    hc.move((338, 594), 0.25)
     time.sleep(0.1)
     hc.click()
     time.sleep(3.5)
-    hc.move((984, 524), 0.8)
+    hc.move((984, 524), 0.5)
     time.sleep(0.25)
     hc.click()
     time.sleep(0.3)
@@ -137,18 +138,30 @@ def reset_mods():
     return
 
 
-def return_to_beatmap(screen):
-    time.sleep(3)
-    hc = pyclick.HumanClicker()
-    '''
+def threaded_hide_chat_if_nec(screen, hc):
     if utils.OCR.check_stuck_social(screen):
-        time.sleep(0.5)
-        hc.move((992, 616), 0.5)
-        time.sleep(0.2)
-        hc.click()
-    '''
-    hc.move((480, 370), 0.2)
+        hide_chat(hc)
+    return
+
+
+def hide_chat(hc):
+    time.sleep(0.05)
+    hc.move((992, 619), 0.05)
     time.sleep(0.1)
+    hc.click()
+    time.sleep(0.05)
+    hc.move((400, 220), 0.1)
+
+
+def return_to_beatmap(screen):
+    hc = pyclick.HumanClicker()
+
+    time.sleep(5)
+    if utils.OCR.check_stuck_social(screen):
+        hide_chat(hc)
+
+    hc.move((480, 170), 0.8)
+    time.sleep(0.2)
     hc.click()
     time.sleep(0.4)
     hc.click()

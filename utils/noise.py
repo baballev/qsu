@@ -8,13 +8,13 @@ EPS_DECAY = 50000
 ## https://github.com/vy007vikas/PyTorch-ActorCriticRL/
 ## All credits go to vy007vikas for the nice Pytorch continuous action actor-critic DDPG she/he/they made.
 
-t = 0
+t = 24000
 
 
 def action_noise(action_dim=4, mu=0, theta=0.15, sigma=0.2):
     global t
     decay_factor = EPS_END + (EPS_START - EPS_END) * math.exp(-1. * t / EPS_DECAY)
-    x = decay_factor * torch.randn(4)
+    x = decay_factor * torch.randn(action_dim)
     # X = torch.ones(action_dim)
     # dx = theta * (mu - X)
     # dx = dx + sigma * torch.randn(len(X))
