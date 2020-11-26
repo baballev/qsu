@@ -10,6 +10,7 @@ import pyautogui
 from utils.osu_config import OSU_FOLDER_PATH, swap_to_AI, restore_player, USERNAME, AI_NAME
 import utils.OCR
 
+
 def start_osu():
     try:
         for proc in psutil.process_iter():
@@ -94,7 +95,7 @@ def launch_random_beatmap():
     hc.click()
     time.sleep(0.3)
     hc.move((500, 320), 0.3)
-    time.sleep(0.2)
+    time.sleep(0.7)
     return
 
 

@@ -8,25 +8,6 @@ import torchvision.transforms as transforms
 ## All credits go to vy007vikas for the nice Pytorch continuous action actor-critic DDPG she/he/they made.
 
 
-class Trash1(nn.Module): # actor
-    def __init__(self):
-        super(Trash1, self).__init__()
-        self.width = 1024
-        self.fc1 = nn.Linear(25, 4)
-
-    def forward(self, x):
-        return F.sigmoid(self.fc1(x.view(x.size(0), -1)[:, :25]))
-
-
-class Trash2(nn.Module): # critic
-    def __init__(self):
-        super(Trash2, self).__init__()
-        self.width = 1024
-        self.fc1 = nn.Linear(25, 1)
-
-    def forward(self, x, y):
-        return F.relu(self.fc1(torch.cat((x.view(x.size(0), -1)[:, :21], y), 1)))
-
 class Actor(nn.Module):
 
     def __init__(self, height=600, width=1024, channels=1, action_dim=4): # action dim: x, y, right_click, left_click
