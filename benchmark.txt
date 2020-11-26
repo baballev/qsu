@@ -1,0 +1,8 @@
+Trash threadé(memory + optimize + clicks): 4.745663699415156 steps/s
+Actor-Critic threadé(memory + optimize + clicks): 3.725806926233832 steps/s
+Actor-Critic non threadé (only clicks threadé):  3.251548164060907 steps/s
+
+
+
+ACTION BLOQUANTE = pytesseract
+

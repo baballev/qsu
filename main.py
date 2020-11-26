@@ -126,13 +126,21 @@ def train(episode_nb, learning_rate, load_weights=None, save_name='tests'):
     process = utils.osu_routines.start_osu()
 
     # Networks & optimizers
+
     actor = models.Actor().to(device)
     target_actor = models.Actor().to(device)
     utils.network_updates.hard_copy(target_actor, actor)
     critic = models.Critic().to(device)
     target_critic = models.Critic().to(device)
     utils.network_updates.hard_copy(target_critic, critic)
-
+    '''
+    actor = models.Trash1().to(device)
+    target_actor = models.Trash1().to(device)
+    utils.network_updates.hard_copy(target_actor, actor)
+    critic = models.Trash2().to(device)
+    target_critic = models.Trash2().to(device)
+    utils.network_updates.hard_copy(target_critic, critic)
+    '''
     if load_weights is not None:
         load_models(load_weights, actor, critic, target_actor, target_critic)
 
@@ -147,6 +155,7 @@ def train(episode_nb, learning_rate, load_weights=None, save_name='tests'):
     utils.osu_routines.enable_nofail()
 
     screen = utils.screen.init_screen(capture_output="pytorch_float_gpu")
+    ocr = utils.OCR.init_OCR()
     hc = pyclick.HumanClicker()
     k = 0
     for i in range(episode_nb):
@@ -159,22 +168,23 @@ def train(episode_nb, learning_rate, load_weights=None, save_name='tests'):
         state = torch.unsqueeze(torch.sum(state, 1)/3, 0)
         fail_read_counter = 0
         episode_average_reward = 0
-        # delta_t = 0
-        # start = time.time()
+        delta_t = 0
+        start = time.time()
         for step in range(MAX_STEPS):
             k += 1
             action = select_exploration_action(state, actor)
 
             x, y = perform_action(action, hc, actor)
             current_screen = utils.screen.get_screen(screen)
-            score = utils.OCR.get_score(screen)
+            score = utils.OCR.get_score(current_screen, ocr)
+
             if (step < 15 and score == -1) or (score - previous_score) > 10000:
                 score = 0
             reward = get_reward(score, previous_score, x, y)
 
             previous_score = score
             if score == -1:
-                if fail_read_counter > 6:
+                if fail_read_counter >= 0:
                     done = True  # ToDo: Code an OCR function to check?
                 else:
                     fail_read_counter += 1
@@ -201,15 +211,19 @@ def train(episode_nb, learning_rate, load_weights=None, save_name='tests'):
                 episode_average_reward = 0
 
             if done:
-                # delta_t /= step
                 break
-        '''
-            end = time.time()
-            delta_t += (end - start)
-            start = end
+
+            # end = time.time()
+            # delta_t += (end - start)
+            # print(delta_t)
+            # start = end
+        end = time.time()
+        delta_t = end - start
+        print(str(step) + ' time steps in ' + str(delta_t) + ' s.')
+        print(str(step/delta_t) + ' time_steps per second.')
         print('Average episode reward: ' + str(episode_average_reward))
-        print('Average time(s) per step: ' + str(delta_t))
-        '''
+        # print('Average time(s) per step: ' + str(delta_t))
+
         gc.collect()  # Garbage collector at each episode
 
         if i % 10 == 0 and i > 0:
@@ -230,7 +244,7 @@ def train(episode_nb, learning_rate, load_weights=None, save_name='tests'):
 if __name__ == '__main__':
     weights_path = ('./weights/first_tests3_actor5.pt', './weights/first_tests3_critic5.pt')
     save_name = 'first_tests_23-11'
-    train(600, LEARNING_RATE, load_weights=weights_path, save_name=save_name)
+    train(1, LEARNING_RATE)
     print(utils.noise.t)
 
 

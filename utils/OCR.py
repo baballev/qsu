@@ -1,19 +1,23 @@
 import time
-
 import pytesseract
 from PIL import Image, ImageOps, ImageEnhance
 import torchvision.transforms
+import torch.utils
+import torch.nn as nn
+import torch.nn.functional as F
 import torch
-
+import os
+import torch.utils.data
 
 import utils.screen
 import utils.osu_routines
 
-SCORE_REGION = (871, 26, 1024, 54)
-ACCURACY_REGION = (916, 61, 1024, 87) # OBSOLETE
+SCORE_REGION = (875, 27, 1019, 54)
+ACCURACY_REGION = (916, 61, 1024, 87)  # OBSOLETE
 HIDE_CHAT_REGION = (971, 611, 1018, 626)
 
 
+'''
 def invert_convert(screen):
     img = torchvision.transforms.ToPILImage()(screen.detach().permute(2, 0, 1).cpu()).convert('L')
     return ImageOps.invert(img)
@@ -22,14 +26,14 @@ def invert_convert(screen):
 def get_score(screen):
     tmp = screen.screenshot(region=SCORE_REGION)
     img = invert_convert(tmp).point(lambda x: 0 if x < 110 else x, 'L')
-    s = pytesseract.image_to_string(img, config='--psm 7 -c tessedit_char_whitelist=0123456789')
+    s = pytesseract.image_to_string(img, config='--psm 7 --oem 1 -c tessedit_char_whitelist=0123456789')
     if s == '\x0c':
         return -1  # ToDo: do something about this
     else:
-        s = int(s)
+        torchvision.transforms.ToPILImage()(tmp.detach().permute(2, 0, 1).cpu()).save(s.split('\n\x0c')[0] + '.png')
         # if s > 10000:
         #     img.save('truc' + str(s) + '.png')
-        return s
+        return int(s)
 
 
 def get_accuracy(screen):
@@ -45,12 +49,96 @@ def check_stuck_social(screen):
     img = invert_convert(img)
     s = pytesseract.image_to_string(img, config='--psm 7 -c tessedit_char_whitelist=HideChathSow')
     return s[:8] == "HideChat"
+'''
+
+class ScoreDataset(torch.utils.data.Dataset):
+    def __init__(self, directory):
+        self.paths = [os.path.join(directory, f) for f in os.listdir(directory)]
+        self.length = len(self.paths)*8
+
+    def __getitem__(self, index):
+        i, j = divmod(index, 8)
+        img = Image.open(self.paths[i])
+        t = int(self.paths[i].split('/')[-1][j])
+
+        img = torchvision.transforms.ToTensor()(img)[:, :, j*18:(j+1)*18]
+        return img, t
+
+    def __len__(self):
+        return self.length
+
+
+class OCRModel(nn.Module):
+    def __init__(self):
+        super(OCRModel, self).__init__() # input: 18 width, 27 h
+        self.conv1 = nn.Conv2d(3, 3, kernel_size=3, stride=1)
+        self.pool2 = nn.MaxPool2d(2,2)
+        self.conv3 = nn.Conv2d(3, 1, kernel_size=3, stride=1)
+        self.pool4 = nn.MaxPool2d(2,2)
+
+        def conv2d_size_out(size, kernel_size=3, stride=1):
+            return (size - (kernel_size - 1) - 1) // stride + 1
+        convw = int((conv2d_size_out(int((conv2d_size_out(18) - 2)/2 +1)) - 2)/2 + 1)
+        convh = int((conv2d_size_out(int((conv2d_size_out(27) - 2)/2 +1)) - 2)/2 + 1)
+
+        self.fc5 = nn.Linear(convw*convh, 10)
+
+    def forward(self, x):
+        x = F.relu(self.pool2(self.conv1(x)))
+        x = F.relu(self.pool4(self.conv3(x)))
+        x = self.fc5(x.view(x.size(0), -1))
+        return x
+
+    def train(self, weights_save='OCR_digit.pt'):
+        dataset = ScoreDataset('E:/Programmation/Python/qsu!/dataset/')
+        dataloader = torch.utils.data.DataLoader(dataset, batch_size=10, shuffle=True)
+        valid = ScoreDataset('E:/Programmation/Python/qsu!/valid/')
+        valid_loader = torch.utils.data.DataLoader(valid, batch_size=10, shuffle=True)
+        optimizer = torch.optim.Adam(self.parameters(), lr=0.001)
+        i = 0
+        previous_loss = 15000000.0
+        for _ in range(15):
+            for data, j in dataloader:
+                optimizer.zero_grad()
+                out = self.forward(data)
+                loss = F.cross_entropy(out, j)
+                loss.backward()
+                optimizer.step()
+                i += 1
+
+            with torch.no_grad():
+                running_loss = 0.0
+                for data, j in valid_loader:
+                    loss = F.cross_entropy(self.forward(data), j)
+                    running_loss += loss.item()
+
+                current_loss = running_loss / len(valid)
+                print(current_loss)
+
+            if current_loss < previous_loss:
+                previous_loss = current_loss
+                torch.save(self.state_dict(), weights_save)
+        return
+
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
+def init_OCR(weights='./weights/OCR/OCR_digit'):
+    OCR = OCRModel().to(device)
+    OCR.load_state_dict(torch.load(weights))
+    return OCR
+
+def get_score(screen_tensor, ocr):
+    score_img = screen_tensor[:, SCORE_REGION[1]+26:SCORE_REGION[3]+26, SCORE_REGION[0]:SCORE_REGION[2]]
+    print(score_img.shape)
 
 
 if __name__ == '__main__':
-    pass
-    # process = utils.osu_routines.start_osu()
-    # time.sleep(20)
-    # screen = utils.screen.init_screen()
-    # check_stuck_social(screen)
-    # stop_osu(process)
+    #utils.osu_routines.start_osu()
+    #screen = utils.screen.init_screen()
+    #while True:
+    #   get_score(screen)
+    #   time.sleep(0.5)
+    ocr = OCRModel()
+    ocr.train()
