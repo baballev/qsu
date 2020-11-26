@@ -11,7 +11,7 @@ def init_screen(capture_output="pytorch_float_gpu"): # capture_output= 'pytorch_
 
 
 def get_screen(capturer):
-    return capturer.screenshot(region=WINDOW_REGION)
+    return capturer.screenshot(region=WINDOW_REGION).permute(2, 0, 1)
 
 
 def get_screen_region(capturer, region):

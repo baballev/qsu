@@ -51,6 +51,7 @@ def check_stuck_social(screen):
     return s[:8] == "HideChat"
 '''
 
+
 class ScoreDataset(torch.utils.data.Dataset):
     def __init__(self, directory):
         self.paths = [os.path.join(directory, f) for f in os.listdir(directory)]
@@ -124,21 +125,41 @@ class OCRModel(nn.Module):
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-def init_OCR(weights='./weights/OCR/OCR_digit'):
+def init_OCR(weights='./weights/OCR/OCR_digit.pt'):
     OCR = OCRModel().to(device)
     OCR.load_state_dict(torch.load(weights))
     return OCR
 
+
 def get_score(screen_tensor, ocr):
-    score_img = screen_tensor[:, SCORE_REGION[1]+26:SCORE_REGION[3]+26, SCORE_REGION[0]:SCORE_REGION[2]]
-    print(score_img.shape)
+    score_img = screen_tensor[:, SCORE_REGION[1]-26:SCORE_REGION[3]-26, SCORE_REGION[0]:SCORE_REGION[2]]
+    score_img = torch.stack([score_img[: , :, j*18:(j+1)*18] for j in range(8)], 0)
+    score_img = ocr(score_img)
+    _, indices = torch.max(score_img, 1)
+    s = 0
+    for n, indic in enumerate(indices):
+        s += indic * 10**(7-n)
+    return s
 
 
 if __name__ == '__main__':
+    ## DATASET MAKER
     #utils.osu_routines.start_osu()
     #screen = utils.screen.init_screen()
     #while True:
     #   get_score(screen)
     #   time.sleep(0.5)
-    ocr = OCRModel()
-    ocr.train()
+
+    ## TRAIN OCR MODEL
+    #ocr = OCRModel()
+    #ocr.train()
+
+    ## GET_SCORE TESTS
+    utils.osu_routines.start_osu()
+    screen = utils.screen.init_screen()
+    ocr = init_OCR('../weights/OCR/OCR_digit.pt')
+    while True:
+        time.sleep(2)
+        sho = utils.screen.get_screen(screen)
+        print(get_score(sho, ocr))
+

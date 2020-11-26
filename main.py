@@ -164,7 +164,7 @@ def train(episode_nb, learning_rate, load_weights=None, save_name='tests'):
 
         current_screen = utils.screen.get_screen(screen)
         previous_score = 0
-        state = torch.unsqueeze(current_screen.permute(2, 0, 1), 0)
+        state = torch.unsqueeze(current_screen, 0)
         state = torch.unsqueeze(torch.sum(state, 1)/3, 0)
         fail_read_counter = 0
         episode_average_reward = 0
@@ -194,7 +194,7 @@ def train(episode_nb, learning_rate, load_weights=None, save_name='tests'):
             if done:
                 new_state = None
             else:
-                new_state = torch.unsqueeze(current_screen.permute(2, 0, 1), 0)
+                new_state = torch.unsqueeze(current_screen, 0)
                 new_state = torch.unsqueeze(torch.sum(new_state, 1), 0)
                 th = Thread(target=memory.push, args=(state, action, reward, new_state))
                 th.start()
