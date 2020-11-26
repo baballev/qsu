@@ -161,14 +161,11 @@ def train(episode_nb, learning_rate, load_weights=None, save_name='tests'):
     for i in range(episode_nb):
         utils.osu_routines.launch_random_beatmap()
         time.sleep(1)
-
         current_screen = utils.screen.get_screen(screen)
         previous_score = 0
         state = torch.unsqueeze(current_screen, 0)
         state = torch.unsqueeze(torch.sum(state, 1)/3, 0)
-        fail_read_counter = 0
         episode_average_reward = 0
-        delta_t = 0
         start = time.time()
         for step in range(MAX_STEPS):
             k += 1
@@ -178,27 +175,20 @@ def train(episode_nb, learning_rate, load_weights=None, save_name='tests'):
             current_screen = utils.screen.get_screen(screen)
             score = utils.OCR.get_score(current_screen, ocr)
 
-            if (step < 15 and score == -1) or (score - previous_score) > 10000:
+            if step < 15 and score == -1:
                 score = 0
             reward = get_reward(score, previous_score, x, y)
 
             previous_score = score
-            if score == -1:
-                if fail_read_counter >= 0:
-                    done = True  # ToDo: Code an OCR function to check?
-                else:
-                    fail_read_counter += 1
-                    continue
-            else:
-                done = False
+            done = (score == -1)
             if done:
                 new_state = None
             else:
                 new_state = torch.unsqueeze(current_screen, 0)
-                new_state = torch.unsqueeze(torch.sum(new_state, 1), 0)
+                new_state = torch.unsqueeze(torch.sum(new_state, 1)/3, 0)
                 th = Thread(target=memory.push, args=(state, action, reward, new_state))
                 th.start()
-                #  memory.push(torch.squeeze(state, 0), torch.squeeze(action, 0), torch.tensor(reward).to(device), torch.squeeze(new_state, 0))
+                # memory.push(torch.squeeze(state, 0), torch.squeeze(action, 0), torch.tensor(reward).to(device), torch.squeeze(new_state, 0))
 
             state = new_state
             thread = Thread(target=optimize, args=(actor_optimizer, critic_optimizer, memory, actor, critic, target_actor, target_critic))
@@ -231,7 +221,7 @@ def train(episode_nb, learning_rate, load_weights=None, save_name='tests'):
             save_model(target_critic, save_name, i, '_critic')
             print(utils.noise.t)
 
-        utils.osu_routines.return_to_beatmap(screen)
+        utils.osu_routines.return_to_beatmap()
 
     if (episode_nb - 1) % 10 != 0:
         save_model(target_actor, save_name, episode_nb, '_actor')

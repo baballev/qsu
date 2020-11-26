@@ -8,7 +8,7 @@ EPS_DECAY = 50000
 ## https://github.com/vy007vikas/PyTorch-ActorCriticRL/
 ## All credits go to vy007vikas for the nice Pytorch continuous action actor-critic DDPG she/he/they made.
 
-t = 24000
+t = 0
 
 
 def action_noise(action_dim=4, mu=0, theta=0.15, sigma=0.2):

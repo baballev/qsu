@@ -19,7 +19,7 @@ class ReplayMemory(object):
     def push(self, *args):
         if len(self.memory) < self.capacity:
             self.memory.append(None)
-        self.memory[self.position] = Transition(torch.squeeze(args[0], 0), torch.squeeze(args[1], 0), torch.tensor(args[2]).to(device), torch.squeeze(args[3], 0))
+        self.memory[self.position] = Transition(torch.squeeze(args[0], 0), torch.squeeze(args[1], 0), args[2], torch.squeeze(args[3], 0))
         self.position = (self.position + 1) % self.capacity
 
     def sample(self, batch_size):

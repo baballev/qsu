@@ -131,14 +131,20 @@ def init_OCR(weights='./weights/OCR/OCR_digit.pt'):
     return OCR
 
 
+counter = 0
 def get_score(screen_tensor, ocr):
+    global counter
     score_img = screen_tensor[:, SCORE_REGION[1]-26:SCORE_REGION[3]-26, SCORE_REGION[0]:SCORE_REGION[2]]
+    if counter % 10 == 0:
+        if not(score_img.sum()):
+            return -1
     score_img = torch.stack([score_img[: , :, j*18:(j+1)*18] for j in range(8)], 0)
     score_img = ocr(score_img)
     _, indices = torch.max(score_img, 1)
-    s = 0
-    for n, indic in enumerate(indices):
+    s = 0.0
+    for n, indic in enumerate(indices.float()):
         s += indic * 10**(7-n)
+    counter += 1
     return s
 
 

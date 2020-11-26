@@ -153,13 +153,9 @@ def hide_chat(hc):
     hc.move((400, 220), 0.1)
 
 
-def return_to_beatmap(screen):
+def return_to_beatmap():
     hc = pyclick.HumanClicker()
-
     time.sleep(5)
-    if utils.OCR.check_stuck_social(screen):
-        hide_chat(hc)
-
     hc.move((480, 170), 0.8)
     time.sleep(0.2)
     hc.click()
