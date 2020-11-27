@@ -26,7 +26,7 @@ def soft_update(target, source, tau):  # y = TAU * x  +  (1 - TAU) * y
 
 class Trainer:
 
-    def __init__(self, batch_size=5, lr=0.001, tau=0.0001, gamma=0.999, load_weights=None, width=1024, height=600): # ToDo: change width and height of state
+    def __init__(self, batch_size=5, lr=0.001, tau=0.0001, gamma=0.999, load_weights=None, width=735, height=546): # ToDo: change width and height of state
         self.batch_size = batch_size
         self.lr = lr
         self.tau = tau
@@ -42,7 +42,7 @@ class Trainer:
             hard_copy(self.target_actor, self.actor)
             hard_copy(self.target_critic, self.critic)
 
-        self.noise = utils.noise.OrnsteinUhlenbeckActionNoise(mu=torch.tensor([0.0, 0.0, 0.0, 0.0]), sigma=150.0, theta=15, x0=torch.tensor([0.0, 0.0, 0.0, 0.0]))
+        self.noise = utils.noise.OrnsteinUhlenbeckActionNoise(mu=torch.tensor([0.0, 0.0, 0.0, 0.0]), sigma=75.0, theta=15, x0=torch.tensor([0.0, 0.0, 0.0, 0.0]))
 
         self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), self.lr)
         self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), self.lr)
@@ -53,8 +53,8 @@ class Trainer:
         self.ocr = utils.OCR.init_OCR()
         self.hc = pyclick.HumanClicker()
 
-    def select_exploration_action(self, state):  # Check if the values are ok
-        action = self.actor(state).detach()
+    def select_exploration_action(self, state, controls_state):  # Check if the values are ok
+        action = self.actor(state, controls_state).detach()
         new_action = action + self.noise().to(device)  # ToDo: Check the noise progression with print or plot
         return new_action  # ToDO: Code exploitation policy action
 
@@ -75,24 +75,22 @@ class Trainer:
     def optimize(self):
         if len(self.memory) < self.batch_size:
             return
-        s1, a1, r1, s2 = self.memory.sample(self.batch_size)
+        s1, a1, r1, s2, c_s1, c_s2 = self.memory.sample(self.batch_size)
 
         # ---------- Critic ----------
-        a2 = self.target_actor(s2).detach()
-        next_val = torch.squeeze(self.target_critic(s2, a2).detach())
+        a2 = self.target_actor(s2, c_s2).detach()
+        next_val = torch.squeeze(self.target_critic(s2, c_s2, a2).detach())
         y_expected = r1 + self.gamma * next_val  # y_exp = r + gamma * Q'(s2, pi'(s2))
-        y_predicted = torch.squeeze(self.critic(s1, a1))  # y_exp = Q(s1, a1)
+        y_predicted = torch.squeeze(self.critic(s1, c_s1, a1))  # y_exp = Q(s1, a1)
         loss_critic = F.smooth_l1_loss(y_predicted, y_expected)
-        # print('los_critic')
         # print(loss_critic)
         self.critic_optimizer.zero_grad()
         loss_critic.backward()
         self.critic_optimizer.step()
 
         # ---------- Actor ----------
-        pred_a1 = self.actor(s1)
-        loss_actor = -1 * torch.sum(self.critic(s1, pred_a1))
-        # print('loss_actor')
+        pred_a1 = self.actor(s1, c_s1)
+        loss_actor = -1 * torch.sum(self.critic(s1, c_s1, pred_a1))
         # print(loss_actor)
         self.actor_optimizer.zero_grad()
         loss_actor.backward()

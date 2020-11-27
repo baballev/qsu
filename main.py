@@ -18,7 +18,6 @@ MAX_STEPS = 5000000
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-
 ## IMPORTANT NOTE: THE LARGE MAJORITY of the code was taken or inspired from:
 ## https://github.com/vy007vikas/PyTorch-ActorCriticRL/
 ## All credits go to vy007vikas for the nice Pytorch continuous action actor-critic DDPG she/he/they made.
@@ -35,73 +34,80 @@ def perform_action(action, human_clicker):
     x, y = int(t[0]), int(t[1]*(600/1024))
     if t[2] < 512:
         pyautogui.mouseDown(button='left')
+        left = 1024.0
     else:
         pyautogui.mouseUp(button='left')
-    if t[3] < 512: # ToDo: variabiliser
+        left = 0.0
+    if t[3] < 512:  # ToDo: variabiliser
         pyautogui.mouseDown(button='right')
+        right = 1024.0
     else:
         pyautogui.mouseUp(button='right')
+        right = 0.0
     if y < 75:
-        thread = Thread(target=threaded_mouse_move, args=(min(x, 840), 75+26, 0.1, human_clicker))
+        thread = Thread(target=threaded_mouse_move, args=(min(x, 840), 75+26, 0.08, human_clicker))
         thread.start()
     elif y > 552:
-        thread = Thread(target=threaded_mouse_move, args=(min(x, 830), 552+26, 0.1, human_clicker))
+        thread = Thread(target=threaded_mouse_move, args=(min(x, 830), 552+26, 0.08, human_clicker))
         thread.start()
     elif x > 840:
-        thread = Thread(target=threaded_mouse_move, args=(840, y+26, 0.1, human_clicker))
+        thread = Thread(target=threaded_mouse_move, args=(840, y+26, 0.08, human_clicker))
         thread.start()
     else:
-        thread = Thread(target=threaded_mouse_move, args=(max(x, 100), y+26, 0.1, human_clicker))
+        thread = Thread(target=threaded_mouse_move, args=(max(x, 100), y+26, 0.08, human_clicker))
         thread.start()
-    return x, y
+    return torch.tensor([[x, y, left, right]]).to(device)
 
 
 def get_reward(score, previous_score, x, y):
-    return 0.9 * max((score - previous_score), 0) - 0.0001 * ((x - 512)**2 + (y - 300)**2)
+    return 0.999 * max((score - previous_score), 0) #- 0.0001 * ((x - 512)**2 + (y - 300)**2)
 
 
 ## Training
 def train(episode_nb, learning_rate, load_weights=None, save_name='tests'):
-    process = utils.osu_routines.start_osu()
-
-    trainer = Trainer() # ToDo: Modify parameters
     # Osu routine
+    process = utils.osu_routines.start_osu()
     utils.osu_routines.move_to_songs(star=1)
     utils.osu_routines.enable_nofail()
 
+    trainer = Trainer() # ToDo: Modify parameters
     for i in range(episode_nb):
         utils.osu_routines.launch_random_beatmap()
-        current_screen = utils.screen.get_screen(trainer.screen)
+
+        current_screen = utils.screen.get_game_screen(trainer.screen)
         previous_score = 0
         state = torch.unsqueeze(current_screen, 0)
         state = torch.unsqueeze(torch.sum(state, 1)/3, 0)
+        controls_state = torch.tensor([[500.0, 320.0, 0.0, 0.0]]).to(device)
         episode_average_reward = 0
         start = time.time()
         k = 0
         for step in range(MAX_STEPS):
             k += 1
-            action = trainer.select_exploration_action(state)
-            x, y = perform_action(action, trainer.hc)
-            time.sleep(0.08)
-            current_screen = utils.screen.get_screen(trainer.screen)
-            score = utils.OCR.get_score(current_screen, trainer.ocr)
+            action = trainer.select_exploration_action(state, controls_state)
+            new_controls_state = perform_action(action, trainer.hc)
+            time.sleep(0.02)
+            current_screen = utils.screen.get_game_screen(trainer.screen)
+            score = utils.OCR.get_score(trainer.screen, trainer.ocr)
 
             if step < 15 and score == -1:
                 score = 0
-            reward = get_reward(score, previous_score, x, y)
+            reward = get_reward(score, previous_score, controls_state[0][0], controls_state[0][1])
 
-            previous_score = score
             done = (score == -1)
             if done:
                 new_state = None
             else:
                 new_state = torch.unsqueeze(current_screen, 0)
                 new_state = torch.unsqueeze(torch.sum(new_state, 1)/3, 0)
-                th = Thread(target=trainer.memory.push, args=(state, action, reward, new_state))
+                th = Thread(target=trainer.memory.push, args=(state, action, reward, new_state, controls_state, new_controls_state))
                 th.start()
                 # memory.push(torch.squeeze(state, 0), torch.squeeze(action, 0), torch.tensor(reward).to(device), torch.squeeze(new_state, 0))
 
+            previous_score = score
             state = new_state
+            controls_state = new_controls_state
+
             thread = Thread(target=trainer.optimize)
             thread.start()
 
@@ -143,11 +149,5 @@ def train(episode_nb, learning_rate, load_weights=None, save_name='tests'):
 if __name__ == '__main__':
     weights_path = ('./weights/first_tests3_actor5.pt', './weights/first_tests3_critic5.pt')
     save_name = 'trash'
-    train(5, LEARNING_RATE, save_name=save_name)
-    print(utils.noise.t)
-
-
-
-
-
+    train(1, LEARNING_RATE, save_name=save_name)
 

@@ -85,6 +85,8 @@ def move_to_songs(star=1):
 
 def launch_random_beatmap():
     hc = pyclick.HumanClicker()
+    pyautogui.mouseUp(button='left')
+    pyautogui.mouseUp(button='right')
     time.sleep(0.25)
     hc.move((338, 594), 0.25)
     time.sleep(0.1)

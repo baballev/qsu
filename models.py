@@ -10,7 +10,7 @@ import torchvision.transforms as transforms
 
 class Actor(nn.Module):
 
-    def __init__(self, height=600, width=1024, channels=1, action_dim=4): # action dim: x, y, right_click, left_click
+    def __init__(self, height=546, width=735, channels=1, action_dim=4, control_dim=4): # action dim: x, y, right_click, left_click
         super(Actor, self).__init__()
         self.height = height
         self.width = width
@@ -23,8 +23,8 @@ class Actor(nn.Module):
         self.bn2 = nn.BatchNorm2d(16)
         self.conv3 = nn.Conv2d(16, 16, kernel_size=5, stride=2)
         self.bn3 = nn.BatchNorm2d(16)
-        self.conv4 = nn.Conv2d(16, 16, kernel_size=3, stride=2)
-        self.bn4 = nn.BatchNorm2d(16)
+        self.conv4 = nn.Conv2d(16, 8, kernel_size=3, stride=2)
+        self.bn4 = nn.BatchNorm2d(8)
 
         def conv2d_size_out(size, kernel_size=5, stride=2):
             return (size - (kernel_size - 1) - 1) // stride + 1
@@ -37,20 +37,23 @@ class Actor(nn.Module):
         print('Conv output width: ' + str(convw))
         print('Conv output height: ' + str(convh))
 
-        self.fc = nn.Linear(convh * convw * 16, action_dim)
+        self.fc1 = nn.Linear(convh * convw * 8 + control_dim, 1024)
+        self.fc2 = nn.Linear(1024, action_dim)
 
-    def forward(self, state, x=0, y=0, button_1=0, button_2=0):
-        state = F.relu(self.bn1(self.conv1(state)))
-        state = F.relu(self.bn2(self.conv2(state)))
-        state = F.relu(self.bn3(self.conv3(state)))
-        state = F.relu(self.bn4(self.conv4(state)))
-
-        return torch.sigmoid(self.fc(state.view(state.size(0), -1))) * self.width
+    def forward(self, state, controls_state):
+        x = F.leaky_relu(self.bn1(self.conv1(state)))
+        x = F.leaky_relu(self.bn2(self.conv2(x)))
+        x = F.leaky_relu(self.bn3(self.conv3(x)))
+        x = F.leaky_relu(self.bn4(self.conv4(x)))
+        x = torch.cat((x.view(x.size(0), -1), controls_state.view(controls_state.size(0), -1)), dim=1)
+        x = F.leaky_relu(self.fc1(x))
+        x = torch.sigmoid(self.fc2(x))  # TODO: TRY WITHOUT THE SIGMOID?
+        return x * self.width
 
 
 class Critic(nn.Module):
 
-    def __init__(self, height=600, width=1024, channels=1, action_dim=4):
+    def __init__(self, height=546, width=735, channels=1, action_dim=4, control_dim=4):
         super(Critic, self).__init__()
 
         self.width = width
@@ -64,8 +67,8 @@ class Critic(nn.Module):
         self.bns2 = nn.BatchNorm2d(16)
         self.convs3 = nn.Conv2d(16, 16, kernel_size=5, stride=2)
         self.bns3 = nn.BatchNorm2d(16)
-        self.convs4 = nn.Conv2d(16, 16, kernel_size=3, stride=2)
-        self.bns4 = nn.BatchNorm2d(16)
+        self.convs4 = nn.Conv2d(16, 8, kernel_size=3, stride=2)
+        self.bns4 = nn.BatchNorm2d(8)
 
         def conv2d_size_out(size, kernel_size=5, stride=2):
             return (size - (kernel_size - 1) - 1) // stride + 1
@@ -78,23 +81,23 @@ class Critic(nn.Module):
         print('Conv output width: ' + str(convw))
         print('Conv output height: ' + str(convh))
 
-        self.fcs4 = nn.Linear(convh * convw * 16, 128)
+        self.fcs4 = nn.Linear(convh * convw * 8 + control_dim, 1024)
 
         self.fca1 = nn.Linear(self.action_dim, 128)
 
-        self.fc1 = nn.Linear(256, 128)
-        self.fc2 = nn.Linear(128, 1)
+        self.fc1 = nn.Linear(128 + 1024, 256)
+        self.fc2 = nn.Linear(256, 1)
 
-    def forward(self, state, action):  # Compute an approximate Q(s, a) value function
-        state = F.relu(self.bns1(self.convs1(state)))
-        state = F.relu(self.bns2(self.convs2(state)))
-        state = F.relu(self.bns3(self.convs3(state)))
-        state = F.relu(self.bns4(self.convs4(state)))
-        state = F.relu(self.fcs4(state.view(state.size(0), -1)))
-
+    def forward(self, state, controls_state, action):  # Compute an approximate Q(s, a) value function
+        x = F.leaky_relu(self.bns1(self.convs1(state)))
+        x = F.leaky_relu(self.bns2(self.convs2(x)))
+        x = F.leaky_relu(self.bns3(self.convs3(x)))
+        x = F.leaky_relu(self.bns4(self.convs4(x)))
+        x = torch.cat((x.view(x.size(0), -1), controls_state.view(controls_state.size(0), -1)), dim=1)
+        x = F.leaky_relu(self.fcs4(x))
         action = F.relu(self.fca1(action))
 
-        x = torch.cat((state, action), dim=1)
+        x = torch.cat((x, action), dim=1)
         x = F.relu(self.fc1(x))
         x = self.fc2(x)
         return x

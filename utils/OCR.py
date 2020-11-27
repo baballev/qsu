@@ -132,9 +132,9 @@ def init_OCR(weights='./weights/OCR/OCR_digit.pt'):
 
 
 counter = 0
-def get_score(screen_tensor, ocr):
+def get_score(screen, ocr):
     global counter
-    score_img = screen_tensor[:, SCORE_REGION[1]-26:SCORE_REGION[3]-26, SCORE_REGION[0]:SCORE_REGION[2]]
+    score_img = utils.screen.get_screen_region(screen, region=SCORE_REGION)#[:, SCORE_REGION[1]-26:SCORE_REGION[3]-26, SCORE_REGION[0]:SCORE_REGION[2]]
     if counter % 10 == 0:
         if not(score_img.sum()):
             return -1
