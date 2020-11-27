@@ -8,6 +8,7 @@ import utils.noise
 import utils.screen
 import utils.OCR
 from memory import ReplayMemory
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
@@ -42,7 +43,7 @@ class Trainer:
             hard_copy(self.target_actor, self.actor)
             hard_copy(self.target_critic, self.critic)
 
-        self.noise = utils.noise.OrnsteinUhlenbeckActionNoise(mu=torch.tensor([0.0, 0.0, 0.0, 0.0]), sigma=75.0, theta=15, x0=torch.tensor([0.0, 0.0, 0.0, 0.0]))
+        self.noise = utils.noise.OrnsteinUhlenbeckActionNoise(mu=torch.tensor([0.0, 0.0, 0.0, 0.0]).to(device), sigma=150.0, theta=15, x0=torch.tensor([0.0, 0.0, 0.0, 0.0]).to(device))
 
         self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), self.lr)
         self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), self.lr)
@@ -55,7 +56,10 @@ class Trainer:
 
     def select_exploration_action(self, state, controls_state):  # Check if the values are ok
         action = self.actor(state, controls_state).detach()
-        new_action = action + self.noise().to(device)  # ToDo: Check the noise progression with print or plot
+        print('hi')
+        with torch.no_grad():
+            new_action = action + self.noise.get_noise()  # ToDo: Check the noise progression with print or plot
+        print(':)')
         return new_action  # ToDO: Code exploitation policy action
 
     def save_model(self, file_name):

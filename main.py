@@ -2,6 +2,7 @@ import torch
 import time
 import pyautogui
 import gc
+import pyclick
 from threading import Thread
 
 import utils.screen
@@ -9,6 +10,8 @@ import utils.osu_routines
 import utils.OCR
 import utils.noise
 from trainer import Trainer
+
+pyclick.humanclicker.setup_pyautogui()
 
 BATCH_SIZE = 5
 LEARNING_RATE = 0.001
@@ -60,7 +63,7 @@ def perform_action(action, human_clicker):
 
 
 def get_reward(score, previous_score, x, y):
-    return 0.999 * max((score - previous_score), 0) #- 0.0001 * ((x - 512)**2 + (y - 300)**2)
+    return 0.999 * max((score - previous_score), 0) - 0.0001 * ((x - 512)**2 + (y - 300)**2)
 
 
 ## Training
@@ -70,7 +73,7 @@ def train(episode_nb, learning_rate, load_weights=None, save_name='tests'):
     utils.osu_routines.move_to_songs(star=1)
     utils.osu_routines.enable_nofail()
 
-    trainer = Trainer() # ToDo: Modify parameters
+    trainer = Trainer()  # ToDo: Modify parameters
     for i in range(episode_nb):
         utils.osu_routines.launch_random_beatmap()
 
@@ -86,14 +89,12 @@ def train(episode_nb, learning_rate, load_weights=None, save_name='tests'):
             k += 1
             action = trainer.select_exploration_action(state, controls_state)
             new_controls_state = perform_action(action, trainer.hc)
-            time.sleep(0.02)
+            # time.sleep(0.02)
             current_screen = utils.screen.get_game_screen(trainer.screen)
             score = utils.OCR.get_score(trainer.screen, trainer.ocr)
-
             if step < 15 and score == -1:
                 score = 0
             reward = get_reward(score, previous_score, controls_state[0][0], controls_state[0][1])
-
             done = (score == -1)
             if done:
                 new_state = None
@@ -103,11 +104,9 @@ def train(episode_nb, learning_rate, load_weights=None, save_name='tests'):
                 th = Thread(target=trainer.memory.push, args=(state, action, reward, new_state, controls_state, new_controls_state))
                 th.start()
                 # memory.push(torch.squeeze(state, 0), torch.squeeze(action, 0), torch.tensor(reward).to(device), torch.squeeze(new_state, 0))
-
             previous_score = score
             state = new_state
             controls_state = new_controls_state
-
             thread = Thread(target=trainer.optimize)
             thread.start()
 
@@ -149,5 +148,5 @@ def train(episode_nb, learning_rate, load_weights=None, save_name='tests'):
 if __name__ == '__main__':
     weights_path = ('./weights/first_tests3_actor5.pt', './weights/first_tests3_critic5.pt')
     save_name = 'trash'
-    train(1, LEARNING_RATE, save_name=save_name)
+    train(1000, LEARNING_RATE, save_name=save_name)
 

@@ -3,6 +3,8 @@ import math
 ## BASED ON: https://github.com/openai/baselines/blob/master/baselines/ddpg/noise.py
 
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 class AdaptiveParamNoiseSpec(object):
     def __init__(self, initial_stddev=0.1, desired_action_stddev=0.1, adoption_coefficient=1.01):
         self.initial_stddev = initial_stddev
@@ -49,7 +51,7 @@ class NormalActionNoise(ActionNoise):
 
 # Based on http://math.stackexchange.com/questions/1287634/implementing-ornstein-uhlenbeck-in-matlab
 class OrnsteinUhlenbeckActionNoise(ActionNoise):
-    def __init__(self, mu, sigma, theta=.15, dt=1.15e-1, x0=None):
+    def __init__(self, mu, sigma, theta=.15, dt=torch.tensor([0.1], device=device), x0=None):
         self.theta = theta
         self.mu = mu
         self.sigma = sigma
@@ -57,13 +59,16 @@ class OrnsteinUhlenbeckActionNoise(ActionNoise):
         self.x0 = x0
         self.reset()
 
-    def __call__(self):
-        x = self.x_prev + self.theta * (self.mu - self.x_prev) * self.dt + self.sigma * math.sqrt(self.dt) * torch.randn(size=self.mu.shape)
+    def get_noise(self):
+        print('yo')
+        x = self.x_prev + self.theta * (self.mu - self.x_prev) * self.dt + self.sigma * torch.sqrt(self.dt) * torch.randn(size=self.mu.shape).to(device)
+        print('hihi')
         self.x_prev = x
+        print('youpi')
         return x
 
     def reset(self):
-        self.x_prev = self.x0 if self.x0 is not None else torch.zeros_like(self.mu)
+        self.x_prev = self.x0 if self.x0 is not None else torch.zeros_like(self.mu).to(device)
 
     def __repr__(self):
         return 'OrnsteinUhlenbeckActionNoise(mu={}, sigma={})'.format(self.mu, self.sigma)
