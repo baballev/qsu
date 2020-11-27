@@ -1,9 +1,12 @@
 import pyclick
 import torch
 import torch.nn.functional as F
+import time
 
 import models
 import utils.noise
+import utils.screen
+import utils.OCR
 from memory import ReplayMemory
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -39,7 +42,7 @@ class Trainer:
             hard_copy(self.target_actor, self.actor)
             hard_copy(self.target_critic, self.critic)
 
-        self.noise = utils.noise.OrnsteinUhlenbeckActionNoise(mu=torch.tensor([512.0, 300.0, 512.0, 512.0]), sigma=200.0, theta=150, x0=torch.tensor([512.0, 300, 512.0, 512.0]))
+        self.noise = utils.noise.OrnsteinUhlenbeckActionNoise(mu=torch.tensor([0.0, 0.0, 0.0, 0.0]), sigma=150.0, theta=15, x0=torch.tensor([0.0, 0.0, 0.0, 0.0]))
 
         self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), self.lr)
         self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), self.lr)
@@ -99,3 +102,9 @@ class Trainer:
         soft_update(self.target_critic, self.critic, self.tau)
         # Todo: Add verbose ?
 
+
+if __name__ == '__main__':
+    trainer = Trainer()
+    while True:
+        time.sleep(0.5)
+        print(trainer.noise())

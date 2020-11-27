@@ -21,7 +21,7 @@ def start_osu():
         process = subprocess.Popen(OSU_FOLDER_PATH + 'osu!.exe')
         print('Osu! started with pid: ' + str(process.pid))
         p = psutil.Process(process.pid)
-        time.sleep(3)
+        time.sleep(5)
         osu_window = win32gui.FindWindow(None, "osu!")
         width, height = win32gui.GetWindowRect(osu_window)[2] - win32gui.GetWindowRect(osu_window)[0], win32gui.GetWindowRect(osu_window)[3] - win32gui.GetWindowRect(osu_window)[1]
         print(width)

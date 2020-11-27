@@ -39,13 +39,13 @@ class Actor(nn.Module):
 
         self.fc = nn.Linear(convh * convw * 16, action_dim)
 
-    def forward(self, x):
-        x = F.relu(self.bn1(self.conv1(x)))
-        x = F.relu(self.bn2(self.conv2(x)))
-        x = F.relu(self.bn3(self.conv3(x)))
-        x = F.relu(self.bn4(self.conv4(x)))
+    def forward(self, state, x=0, y=0, button_1=0, button_2=0):
+        state = F.relu(self.bn1(self.conv1(state)))
+        state = F.relu(self.bn2(self.conv2(state)))
+        state = F.relu(self.bn3(self.conv3(state)))
+        state = F.relu(self.bn4(self.conv4(state)))
 
-        return torch.sigmoid(self.fc(x.view(x.size(0), -1))) * self.width
+        return torch.sigmoid(self.fc(state.view(state.size(0), -1))) * self.width
 
 
 class Critic(nn.Module):

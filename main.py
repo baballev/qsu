@@ -132,7 +132,7 @@ def train(episode_nb, learning_rate, load_weights=None, save_name='tests'):
             print(utils.noise.t)
 
         utils.osu_routines.return_to_beatmap()
-
+        trainer.noise.reset()
     if (episode_nb - 1) % 10 != 0:
         trainer.save_model(save_name)
 

@@ -1,6 +1,6 @@
 import d3dshot
 import time
-WINDOW_REGION = (0, 26, 1024, 626) #ToDo: CHeck
+WINDOW_REGION = (0, 26, 1024, 626)
 
 
 def init_screen(capture_output="pytorch_float_gpu"): # capture_output= 'pytorch_float_gpu'
