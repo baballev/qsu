@@ -147,6 +147,6 @@ def train(episode_nb, learning_rate, load_weights=None, save_name='tests'):
 
 if __name__ == '__main__':
     weights_path = ('./weights/actortraining28-11-2020-50.pt', './weights/critictraining28-11-2020-50.pt')
-    save_name = 'training28-11-2020-suite-'
-    train(50, LEARNING_RATE, save_name=save_name, load_weights=weights_path)
+    save_name = 'training29-11-2020-'
+    train(500, LEARNING_RATE, save_name=save_name, load_weights=None)
 

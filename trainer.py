@@ -37,6 +37,8 @@ class Trainer:
         self.target_actor = models.Actor().to(device)
         self.critic = models.Critic().to(device)
         self.target_critic = models.Critic().to(device)
+        print(self.actor)
+        print(self.critic)
         if load_weights is not None:
             self.load_models(load_weights)
         else:
