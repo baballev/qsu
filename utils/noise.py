@@ -1,5 +1,4 @@
 import torch
-import math
 ## BASED ON: https://github.com/openai/baselines/blob/master/baselines/ddpg/noise.py
 
 
@@ -57,14 +56,12 @@ class OrnsteinUhlenbeckActionNoise(ActionNoise):
         self.sigma = sigma
         self.dt = dt
         self.x0 = x0
-        self.reset()
+        self.x_prev = self.x0 if self.x0 is not None else torch.zeros_like(self.mu, device=device)
 
     def get_noise(self):
-        print('yo')
-        x = self.x_prev + self.theta * (self.mu - self.x_prev) * self.dt + self.sigma * torch.sqrt(self.dt) * torch.randn(size=self.mu.shape).to(device)
-        print('hihi')
+        tmp = self.sigma * torch.sqrt(self.dt) * torch.randn(size=self.mu.shape, device=device)
+        x = self.x_prev + self.theta * (self.mu - self.x_prev) * self.dt + tmp
         self.x_prev = x
-        print('youpi')
         return x
 
     def reset(self):

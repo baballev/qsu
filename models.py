@@ -37,8 +37,9 @@ class Actor(nn.Module):
         print('Conv output width: ' + str(convw))
         print('Conv output height: ' + str(convh))
 
-        self.fc1 = nn.Linear(convh * convw * 8 + control_dim, 1024)
-        self.fc2 = nn.Linear(1024, action_dim)
+        self.fc1 = nn.Linear(convh * convw * 8 +4, 1024)
+        self.fc2 = nn.Linear(1024, action_dim) # ToDo: add seperate layer for controls ...
+
 
     def forward(self, state, controls_state):
         x = F.leaky_relu(self.bn1(self.conv1(state)))
@@ -95,10 +96,10 @@ class Critic(nn.Module):
         x = F.leaky_relu(self.bns4(self.convs4(x)))
         x = torch.cat((x.view(x.size(0), -1), controls_state.view(controls_state.size(0), -1)), dim=1)
         x = F.leaky_relu(self.fcs4(x))
-        action = F.relu(self.fca1(action))
+        action = F.leaky_relu(self.fca1(action))
 
         x = torch.cat((x, action), dim=1)
-        x = F.relu(self.fc1(x))
+        x = F.leaky_relu(self.fc1(x))
         x = self.fc2(x)
         return x
 

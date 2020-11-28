@@ -8,6 +8,7 @@ import torch.nn.functional as F
 import torch
 import os
 import torch.utils.data
+import win32gui
 
 import utils.screen
 import utils.osu_routines
@@ -132,13 +133,15 @@ def init_OCR(weights='./weights/OCR/OCR_digit.pt'):
 
 
 counter = 0
-def get_score(screen, ocr):
+
+
+def get_score(screen, ocr, wndw):
     global counter
-    score_img = utils.screen.get_screen_region(screen, region=SCORE_REGION)#[:, SCORE_REGION[1]-26:SCORE_REGION[3]-26, SCORE_REGION[0]:SCORE_REGION[2]]
-    if counter % 10 == 0:
-        if not(score_img.sum()):
+    score_img = utils.screen.get_screen_region(screen, region=SCORE_REGION)
+    if counter % 5 == 0:
+        if not(score_img.sum()) or win32gui.GetWindowText(wndw) == 'osu!':
             return -1
-    score_img = torch.stack([score_img[: , :, j*18:(j+1)*18] for j in range(8)], 0)
+    score_img = torch.stack([score_img[:, :, j*18:(j+1)*18] for j in range(8)], 0)
     score_img = ocr(score_img)
     _, indices = torch.max(score_img, 1)
     s = 0.0

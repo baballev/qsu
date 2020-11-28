@@ -31,7 +31,7 @@ def start_osu():
         print(e)
         p = None
 
-    return p
+    return p, osu_window
 
 
 def stop_osu(process):

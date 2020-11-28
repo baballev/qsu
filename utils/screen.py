@@ -7,7 +7,7 @@ WINDOW_REGION = (0, 26, 1024, 626)
 GAME_REGION = (145, 80, 880, 626)
 
 
-def init_screen(capture_output="pytorch_float_gpu"): # capture_output= 'pytorch_float_gpu'
+def init_screen(capture_output="pytorch_float_gpu"):
     print('Initiating screen capture.')
     capturer = d3dshot.create(capture_output=capture_output, frame_buffer_size=5)
     print(capturer.display)
