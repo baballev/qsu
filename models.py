@@ -50,7 +50,7 @@ class Actor(nn.Module):
         y = F.leaky_relu(self.fcc2(y))
         z = torch.cat((x, y), dim=1)
         z = F.leaky_relu(self.fc3(z))
-        z = self.fc4(z)
+        z = torch.sigmoid(self.fc4(z))
         return z
 
 
@@ -102,9 +102,9 @@ class Critic(nn.Module):
         y = F.leaky_relu(self.fc2(y))
         z = F.leaky_relu(self.fca1(action))
         z = F.leaky_relu(self.fca2(z))
-        x = torch.cat((x, y, z), dim=1)
-        x = F.leaky_relu(self.ffc1(x))
-        x = self.ffc2(x)
-        return x
+        f = torch.cat((x, y, z), dim=1)
+        f = F.leaky_relu(self.ffc1(f))
+        f = self.ffc2(f)
+        return f
 
 

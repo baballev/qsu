@@ -19,8 +19,11 @@ GAMMA = 0.999
 TAU = 0.0001
 MAX_STEPS = 50000
 WIDTH = 735
+HEIGHT = 546
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+torch.autograd.set_detect_anomaly(True)
 
 ## IMPORTANT NOTE: THE LARGE MAJORITY of the code was taken or inspired from:
 ## https://github.com/vy007vikas/PyTorch-ActorCriticRL/
@@ -33,40 +36,37 @@ def threaded_mouse_move(x, y, t, human_clicker):
     return
 
 
-threshold = torch.tensor(0.5, device=device)
-
-
 def perform_action(action, human_clicker):
     x, y = action[0][0],  action[0][1]
-    if action[0][2] > threshold:
+    if action[0][2] > 0.5:
         pyautogui.mouseDown(button='left')
         left = 1.0
     else:
         pyautogui.mouseUp(button='left')
         left = 0.0
-    if action[0][3] > threshold:  # ToDo: variabiliser
+    if action[0][3] > 0.5:  # ToDo: variabiliser
         pyautogui.mouseDown(button='right')
         right = 1.0
     else:
         pyautogui.mouseUp(button='right')
         right = 0.0
-    if y*WIDTH < 54:
+    if y*HEIGHT < 54:
         thread = Thread(target=threaded_mouse_move, args=(min(int(x*WIDTH)+145, 850), 54+26, 0.1, human_clicker))
         thread.start()
-    elif y*WIDTH > 560:
+    elif y*HEIGHT > 560:
         thread = Thread(target=threaded_mouse_move, args=(min(int(x*WIDTH)+145, 830), 560+26, 0.1, human_clicker))
         thread.start()
     elif x*WIDTH > 705:
-        thread = Thread(target=threaded_mouse_move, args=(705+145, int(y*WIDTH)+26, 0.1, human_clicker))
+        thread = Thread(target=threaded_mouse_move, args=(705+145, int(y*HEIGHT)+26, 0.1, human_clicker))
         thread.start()
     else:
-        thread = Thread(target=threaded_mouse_move, args=(max(int(x*WIDTH)+145, 145), int(y*WIDTH)+26, 0.1, human_clicker))
+        thread = Thread(target=threaded_mouse_move, args=(max(int(x*WIDTH)+145, 145), int(y*HEIGHT)+26, 0.1, human_clicker))
         thread.start()
     return torch.tensor([[x, y, left, right]], device=device)
 
 
 def get_reward(score, previous_score, x, y):
-    return torch.tensor(0.9999 * max((score - previous_score), 0) - 0.0001 * ((x - 512.0)**2 + (y - 300.0)**2), device=device)
+    return torch.tensor(0.9999 * max((score - previous_score), 0) - 0.001 * ((x - 0.5)**2 + (y - 0.5)**2), device=device)
 
 
 ## Training
@@ -86,6 +86,7 @@ def train(episode_nb, learning_rate, load_weights=None, save_name='tests'):
         controls_state = torch.tensor([[0.5, 0.5, 0.0, 0.0]], device=device)
         episode_average_reward = 0.0
         start = time.time()
+        thread = None
         for step in range(MAX_STEPS):
             k += 1
             action = trainer.select_exploration_action(state, controls_state)
@@ -106,6 +107,8 @@ def train(episode_nb, learning_rate, load_weights=None, save_name='tests'):
             previous_score = score
             state = new_state
             controls_state = new_controls_state
+            if thread is not None:
+                thread.join()
             thread = Thread(target=trainer.optimize)
             thread.start()
 
