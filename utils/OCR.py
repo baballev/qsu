@@ -137,17 +137,21 @@ counter = 0
 
 def get_score(screen, ocr, wndw):
     global counter
-    score_img = utils.screen.get_screen_region(screen, region=SCORE_REGION)
-    if counter % 5 == 0:
-        if not(score_img.sum()) or win32gui.GetWindowText(wndw) == 'osu!':
+    with torch.no_grad():
+        score_img = utils.screen.get_screen_region(screen, region=SCORE_REGION)
+        if counter % 5 == 0:
+            if not(score_img.sum()) or win32gui.GetWindowText(wndw) == 'osu!':
+                return -1
+
+        score_img = torch.stack([score_img[:, :, j*18:(j+1)*18] for j in range(8)], 0)
+        if score_img.shape[2] > 27:
             return -1
-    score_img = torch.stack([score_img[:, :, j*18:(j+1)*18] for j in range(8)], 0)
-    score_img = ocr(score_img)
-    _, indices = torch.max(score_img, 1)
-    s = 0.0
-    for n, indic in enumerate(indices.float()):
-        s += indic * 10**(7-n)
-    counter += 1
+        score_img = ocr(score_img)
+        _, indices = torch.max(score_img, 1)
+        s = 0.0
+        for n, indic in enumerate(indices.float()):
+            s += indic * 10**(7-n)
+        counter += 1
     return s
 
 

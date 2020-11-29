@@ -16,22 +16,22 @@ class Actor(nn.Module):
         self.channels = channels
         self.action_dim = action_dim
 
-        self.conv1 = nn.Conv2d(self.channels, 8, kernel_size=5, stride=2)
+        self.conv1 = nn.Conv2d(self.channels, 8, kernel_size=9, stride=2)
         self.bn1 = nn.BatchNorm2d(8)
-        self.conv2 = nn.Conv2d(8, 16, kernel_size=5, stride=2)
+        self.conv2 = nn.Conv2d(8, 16, kernel_size=7, stride=2)
         self.bn2 = nn.BatchNorm2d(16)
-        self.conv3 = nn.Conv2d(16, 16, kernel_size=5, stride=2)
-        self.bn3 = nn.BatchNorm2d(16)
-        self.conv4 = nn.Conv2d(16, 8, kernel_size=3, stride=2)
-        self.bn4 = nn.BatchNorm2d(8)
+        self.conv3 = nn.Conv2d(16, 24, kernel_size=5, stride=2)
+        self.bn3 = nn.BatchNorm2d(24)
+        self.conv4 = nn.Conv2d(24, 12, kernel_size=3, stride=2)
+        self.bn4 = nn.BatchNorm2d(12)
 
         def conv2d_size_out(size, kernel_size=5, stride=2):
             return (size - (kernel_size - 1) - 1) // stride + 1
 
-        convw = conv2d_size_out(conv2d_size_out(conv2d_size_out(conv2d_size_out(width))), kernel_size=3)
-        convh = conv2d_size_out(conv2d_size_out(conv2d_size_out(conv2d_size_out(height))), kernel_size=3)
+        convw = conv2d_size_out(conv2d_size_out(conv2d_size_out(conv2d_size_out(width, kernel_size=9), kernel_size=7)), kernel_size=3)
+        convh = conv2d_size_out(conv2d_size_out(conv2d_size_out(conv2d_size_out(height, kernel_size=9), kernel_size=7)), kernel_size=3)
 
-        self.fc1 = nn.Linear(convh * convw * 8, 2048)
+        self.fc1 = nn.Linear(convh * convw * 12, 2048)
         self.fc2 = nn.Linear(2048, 512)
         self.fcc1 = nn.Linear(control_dim, 128)
         self.fcc2 = nn.Linear(128, 256)
@@ -48,10 +48,10 @@ class Actor(nn.Module):
         x = F.leaky_relu(self.fc2(x))
         y = F.leaky_relu(self.fcc1(controls_state))
         y = F.leaky_relu(self.fcc2(y))
-        x = torch.cat((x, y), dim=1)
-        x = F.leaky_relu(self.fc3(x))
-        x = torch.sigmoid(self.fc4(x))
-        return x * self.width
+        z = torch.cat((x, y), dim=1)
+        z = F.leaky_relu(self.fc3(z))
+        z = self.fc4(z)
+        return z
 
 
 class Critic(nn.Module):
@@ -63,22 +63,22 @@ class Critic(nn.Module):
         self.channels = channels
         self.action_dim = action_dim
 
-        self.convs1 = nn.Conv2d(self.channels, 8, kernel_size=5, stride=2)
+        self.convs1 = nn.Conv2d(self.channels, 8, kernel_size=9, stride=2)
         self.bns1 = nn.BatchNorm2d(8)
-        self.convs2 = nn.Conv2d(8, 16, kernel_size=5, stride=2)
+        self.convs2 = nn.Conv2d(8, 16, kernel_size=7, stride=2)
         self.bns2 = nn.BatchNorm2d(16)
-        self.convs3 = nn.Conv2d(16, 16, kernel_size=5, stride=2)
-        self.bns3 = nn.BatchNorm2d(16)
-        self.convs4 = nn.Conv2d(16, 8, kernel_size=3, stride=2)
-        self.bns4 = nn.BatchNorm2d(8)
+        self.convs3 = nn.Conv2d(16, 24, kernel_size=5, stride=2)
+        self.bns3 = nn.BatchNorm2d(24)
+        self.convs4 = nn.Conv2d(24, 12, kernel_size=3, stride=2)
+        self.bns4 = nn.BatchNorm2d(12)
 
         def conv2d_size_out(size, kernel_size=5, stride=2):
             return (size - (kernel_size - 1) - 1) // stride + 1
 
-        convw = conv2d_size_out(conv2d_size_out(conv2d_size_out(conv2d_size_out(width))), kernel_size=3)
-        convh = conv2d_size_out(conv2d_size_out(conv2d_size_out(conv2d_size_out(height))), kernel_size=3)
+        convw = conv2d_size_out(conv2d_size_out(conv2d_size_out(conv2d_size_out(width, kernel_size=9), kernel_size=7)), kernel_size=3)
+        convh = conv2d_size_out(conv2d_size_out(conv2d_size_out(conv2d_size_out(height, kernel_size=9), kernel_size=7)), kernel_size=3)
 
-        self.fcs4 = nn.Linear(convh * convw * 8, 2048)
+        self.fcs4 = nn.Linear(convh * convw * 12, 2048)
         self.fcs5 = nn.Linear(2048, 512)
 
         self.fca1 = nn.Linear(self.action_dim, 128)

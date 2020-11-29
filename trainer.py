@@ -27,7 +27,7 @@ def soft_update(target, source, tau):  # y = TAU * x  +  (1 - TAU) * y
 
 class Trainer:
 
-    def __init__(self, batch_size=5, lr=0.001, tau=0.001, gamma=0.999, load_weights=None, width=735, height=546): # ToDo: change width and height of state
+    def __init__(self, batch_size=5, lr=0.0001, tau=0.0001, gamma=0.999, load_weights=None, width=735, height=546): # ToDo: change width and height of state
         self.batch_size = batch_size
         self.lr = lr
         self.tau = tau
@@ -45,12 +45,12 @@ class Trainer:
             hard_copy(self.target_actor, self.actor)
             hard_copy(self.target_critic, self.critic)
 
-        self.noise = utils.noise.OrnsteinUhlenbeckActionNoise(mu=torch.tensor([0.0, 0.0, 0.0, 0.0], device=device), sigma=150.0, theta=15, x0=torch.tensor([0.0, 0.0, 0.0, 0.0], device=device))
+        self.noise = utils.noise.OrnsteinUhlenbeckActionNoise(mu=torch.tensor([0.0, 0.0, 0.0, 0.0], device=device), sigma=0.2, theta=0.15, x0=torch.tensor([0.0, 0.0, 0.0, 0.0], device=device))
 
         self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), self.lr)
         self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), self.lr)
 
-        self.memory = ReplayMemory(1500)  # The larger the better because then the transitions have more chances to be uncorrelated
+        self.memory = ReplayMemory(2000)  # The larger the better because then the transitions have more chances to be uncorrelated
 
         self.screen = utils.screen.init_screen(capture_output="pytorch_float_gpu")
         self.ocr = utils.OCR.init_OCR()
@@ -59,7 +59,11 @@ class Trainer:
     def select_exploration_action(self, state, controls_state):  # Check if the values are ok
         action = self.actor(state, controls_state).detach()
         new_action = action + self.noise.get_noise()  # ToDo: Check the noise progression with print or plot
-        return new_action  # ToDO: Code exploitation policy action
+        return new_action
+
+    def select_exploitation_action(self, state, controls_state):
+        action = self.target_actor(state, controls_state).detach()
+        return action
 
     def save_model(self, file_name, num=0):
         torch.save(self.target_actor.state_dict(), './weights/actor' + file_name + str(num) + '.pt')
@@ -70,7 +74,9 @@ class Trainer:
 
     def load_models(self, weights_path):
         self.actor.load_state_dict(torch.load(weights_path[0]))
+        print('Loaded actor weights from: ' + weights_path[0])
         self.critic.load_state_dict(torch.load(weights_path[1]))
+        print('Loaded critic weights from :' + weights_path[1])
         hard_copy(self.target_actor, self.actor)
         hard_copy(self.target_critic, self.critic)
         return
@@ -104,3 +110,8 @@ class Trainer:
        # Todo: Add verbose ?
 
 
+if __name__ == '__main__':
+    trainer = Trainer()
+    while True:
+        time.sleep(0.5)
+        print(trainer.noise.get_noise())

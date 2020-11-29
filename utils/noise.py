@@ -4,6 +4,7 @@ import torch
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+
 class AdaptiveParamNoiseSpec(object):
     def __init__(self, initial_stddev=0.1, desired_action_stddev=0.1, adoption_coefficient=1.01):
         self.initial_stddev = initial_stddev
@@ -65,7 +66,7 @@ class OrnsteinUhlenbeckActionNoise(ActionNoise):
         return x
 
     def reset(self):
-        self.x_prev = self.x0 if self.x0 is not None else torch.zeros_like(self.mu).to(device)
+        self.x_prev = self.x0 if self.x0 is not None else torch.zeros_like(self.mu, device=device)
 
     def __repr__(self):
         return 'OrnsteinUhlenbeckActionNoise(mu={}, sigma={})'.format(self.mu, self.sigma)
