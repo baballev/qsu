@@ -20,10 +20,10 @@ class Actor(nn.Module):
         self.bn1 = nn.BatchNorm2d(8)
         self.conv2 = nn.Conv2d(8, 16, kernel_size=7, stride=2)
         self.bn2 = nn.BatchNorm2d(16)
-        self.conv3 = nn.Conv2d(16, 24, kernel_size=5, stride=2)
-        self.bn3 = nn.BatchNorm2d(24)
-        self.conv4 = nn.Conv2d(24, 12, kernel_size=3, stride=2)
-        self.bn4 = nn.BatchNorm2d(12)
+        self.conv3 = nn.Conv2d(16, 16, kernel_size=5, stride=2)
+        self.bn3 = nn.BatchNorm2d(16)
+        self.conv4 = nn.Conv2d(16, 8, kernel_size=3, stride=2)
+        self.bn4 = nn.BatchNorm2d(8)
 
         def conv2d_size_out(size, kernel_size=5, stride=2):
             return (size - (kernel_size - 1) - 1) // stride + 1
@@ -31,8 +31,8 @@ class Actor(nn.Module):
         convw = conv2d_size_out(conv2d_size_out(conv2d_size_out(conv2d_size_out(width, kernel_size=9), kernel_size=7)), kernel_size=3)
         convh = conv2d_size_out(conv2d_size_out(conv2d_size_out(conv2d_size_out(height, kernel_size=9), kernel_size=7)), kernel_size=3)
 
-        self.fc1 = nn.Linear(convh * convw * 12, 2048)
-        self.fc2 = nn.Linear(2048, 512)
+        self.fc1 = nn.Linear(convh * convw * 8, 1024)
+        self.fc2 = nn.Linear(1024, 512)
         self.fcc1 = nn.Linear(control_dim, 128)
         self.fcc2 = nn.Linear(128, 256)
         self.fc3 = nn.Linear(512 + 256, 128)
@@ -67,10 +67,10 @@ class Critic(nn.Module):
         self.bns1 = nn.BatchNorm2d(8)
         self.convs2 = nn.Conv2d(8, 16, kernel_size=7, stride=2)
         self.bns2 = nn.BatchNorm2d(16)
-        self.convs3 = nn.Conv2d(16, 24, kernel_size=5, stride=2)
-        self.bns3 = nn.BatchNorm2d(24)
-        self.convs4 = nn.Conv2d(24, 12, kernel_size=3, stride=2)
-        self.bns4 = nn.BatchNorm2d(12)
+        self.convs3 = nn.Conv2d(16, 16, kernel_size=5, stride=2)
+        self.bns3 = nn.BatchNorm2d(16)
+        self.convs4 = nn.Conv2d(16, 8, kernel_size=3, stride=2)
+        self.bns4 = nn.BatchNorm2d(8)
 
         def conv2d_size_out(size, kernel_size=5, stride=2):
             return (size - (kernel_size - 1) - 1) // stride + 1
@@ -78,8 +78,8 @@ class Critic(nn.Module):
         convw = conv2d_size_out(conv2d_size_out(conv2d_size_out(conv2d_size_out(width, kernel_size=9), kernel_size=7)), kernel_size=3)
         convh = conv2d_size_out(conv2d_size_out(conv2d_size_out(conv2d_size_out(height, kernel_size=9), kernel_size=7)), kernel_size=3)
 
-        self.fcs4 = nn.Linear(convh * convw * 12, 2048)
-        self.fcs5 = nn.Linear(2048, 512)
+        self.fcs4 = nn.Linear(convh * convw * 8, 1024)
+        self.fcs5 = nn.Linear(1024, 512)
 
         self.fca1 = nn.Linear(self.action_dim, 128)
         self.fca2 = nn.Linear(128, 256)

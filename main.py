@@ -3,6 +3,7 @@ import time
 import pyautogui
 import gc
 import pyclick
+import torchvision
 from threading import Thread
 
 import utils.screen
@@ -13,10 +14,10 @@ from trainer import Trainer
 
 torch.cuda.empty_cache()
 
-BATCH_SIZE = 10
-LEARNING_RATE = 0.0001
+BATCH_SIZE = 5
+LEARNING_RATE = 0.00001
 GAMMA = 0.999
-TAU = 0.0001
+TAU = 0.00001
 MAX_STEPS = 50000
 WIDTH = 735
 HEIGHT = 546
@@ -51,22 +52,22 @@ def perform_action(action, human_clicker):
         pyautogui.mouseUp(button='right')
         right = 0.0
     if y*HEIGHT < 54:
-        thread = Thread(target=threaded_mouse_move, args=(min(int(x*WIDTH)+145, 850), 54+26, 0.1, human_clicker))
+        thread = Thread(target=threaded_mouse_move, args=(min(int(x*WIDTH)+145, 850), 54+26, 0.12, human_clicker))
         thread.start()
     elif y*HEIGHT > 560:
-        thread = Thread(target=threaded_mouse_move, args=(min(int(x*WIDTH)+145, 830), 560+26, 0.1, human_clicker))
+        thread = Thread(target=threaded_mouse_move, args=(min(int(x*WIDTH)+145, 830), 560+26, 0.12, human_clicker))
         thread.start()
     elif x*WIDTH > 705:
-        thread = Thread(target=threaded_mouse_move, args=(705+145, int(y*HEIGHT)+26, 0.1, human_clicker))
+        thread = Thread(target=threaded_mouse_move, args=(705+145, int(y*HEIGHT)+26, 0.12, human_clicker))
         thread.start()
     else:
-        thread = Thread(target=threaded_mouse_move, args=(max(int(x*WIDTH)+145, 145), int(y*HEIGHT)+26, 0.1, human_clicker))
+        thread = Thread(target=threaded_mouse_move, args=(max(int(x*WIDTH)+145, 145), int(y*HEIGHT)+26, 0.12, human_clicker))
         thread.start()
     return torch.tensor([[x, y, left, right]], device=device)
 
 
 def get_reward(score, previous_score, x, y):
-    return torch.tensor(0.9999 * max((score - previous_score), 0) - 0.001 * ((x - 0.5)**2 + (y - 0.5)**2), device=device)
+    return torch.tensor(1.0 * max((score - previous_score), 0), device=device)# - 0.005 * ((x - 0.5)**2 + (y - 0.5)**2)
 
 
 ## Training
@@ -75,8 +76,8 @@ def train(episode_nb, learning_rate, load_weights=None, save_name='tests'):
     process, wndw = utils.osu_routines.start_osu()
     utils.osu_routines.move_to_songs(star=1)
     utils.osu_routines.enable_nofail()
-
-    trainer = Trainer(load_weights=load_weights)  # ToDo: Modify parameters
+    episode_average_reward = 0.0
+    trainer = Trainer(load_weights=load_weights, lr=learning_rate)  # ToDo: Modify parameters
     k = 0
     for i in range(episode_nb):
         utils.osu_routines.launch_random_beatmap()
@@ -84,14 +85,15 @@ def train(episode_nb, learning_rate, load_weights=None, save_name='tests'):
         state = (utils.screen.get_game_screen(trainer.screen).unsqueeze_(0).sum(1, keepdim=True)/3.0)
         previous_score = 0
         controls_state = torch.tensor([[0.5, 0.5, 0.0, 0.0]], device=device)
-        episode_average_reward = 0.0
         start = time.time()
         thread = None
+
+        #logger = open('./benchmark/log.txt', 'w+')
         for step in range(MAX_STEPS):
             k += 1
             action = trainer.select_exploration_action(state, controls_state)
+            #action = trainer.select_exploitation_action(state, controls_state)
             new_controls_state = perform_action(action, trainer.hc)
-            # time.sleep(0.02)
             new_state = (utils.screen.get_game_screen(trainer.screen).unsqueeze_(0).sum(1, keepdim=True)/3.0)
             score = utils.OCR.get_score(trainer.screen, trainer.ocr, wndw)
             if (step < 15 and score == -1) or (score - previous_score > 100000):
@@ -101,22 +103,28 @@ def train(episode_nb, learning_rate, load_weights=None, save_name='tests'):
             if done:
                 new_state = None
             else:
+                #with torch.no_grad():
+                #    t = torch.squeeze(trainer.critic(state, controls_state, action))
+                #    torchvision.transforms.ToPILImage()(torch.squeeze(state)).save('./benchmark/' + str(step) + '__' + str(t.item()) + '_.png')
+                #    logger.write(str(step) + '___' + str(t.item()) + '___' + str(controls_state) + '___' + str(action) + '\n')
+
                 th = Thread(target=trainer.memory.push, args=(state, action, reward, new_state, controls_state, new_controls_state))
                 th.start()
                 # memory.push(torch.squeeze(state, 0), torch.squeeze(action, 0), torch.tensor(reward).to(device), torch.squeeze(new_state, 0))
-            previous_score = score
-            state = new_state
-            controls_state = new_controls_state
+
             if thread is not None:
                 thread.join()
             thread = Thread(target=trainer.optimize)
             thread.start()
 
+            previous_score = score
+            state = new_state
+            controls_state = new_controls_state
             episode_average_reward += reward
             if k % 1000 == 0:
                 print('Reward average over last 1000 steps: ')
                 print(episode_average_reward/1000)
-                episode_average_reward = 0
+                episode_average_reward = 0.0
 
             if done:
                 break
@@ -127,6 +135,7 @@ def train(episode_nb, learning_rate, load_weights=None, save_name='tests'):
             # start = end
         end = time.time()
         delta_t = end - start
+        #logger.close()
         print(str(step) + ' time steps in ' + str(delta_t) + ' s.')
         print(str(step/delta_t) + ' time_steps per second.')
         # print('Average episode reward: ' + str(episode_average_reward))
@@ -142,15 +151,15 @@ def train(episode_nb, learning_rate, load_weights=None, save_name='tests'):
         pyautogui.mouseUp(button='right')
         pyautogui.mouseUp(button='left')
 
-    if (episode_nb - 1) % 5 != 0:
-        trainer.save_model(save_name)
+    if (episode_nb - 1) % 10 != 0:
+        trainer.save_model(save_name, num=episode_nb-1)
 
     trainer.screen.stop()
     utils.osu_routines.stop_osu(process)
 
 
 if __name__ == '__main__':
-    weights_path = ('./weights/actortraining29-11-2020-200.pt', './weights/critictraining29-11-2020-200.pt')
-    save_name = 'training_29-11-2020-'
-    train(200, LEARNING_RATE, save_name=save_name, load_weights=None)
+    weights_path = ('./weights/actortraining_1star_30-11-2020-49.pt', './weights/critictraining_1star_30-11-2020-49.pt')
+    save_name = 'training_1star_30-11-2020-'
+    train(1, LEARNING_RATE, save_name=save_name, load_weights=weights_path)
 

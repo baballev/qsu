@@ -149,10 +149,10 @@ def get_score(screen, ocr, wndw):
         score_img = ocr(score_img)
         _, indices = torch.max(score_img, 1)
         s = 0.0
-        for n, indic in enumerate(indices.float()):
+        for n, indic in enumerate(indices):
             s += indic * 10**(7-n)
         counter += 1
-    return s
+    return s.float()
 
 
 if __name__ == '__main__':

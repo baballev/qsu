@@ -45,12 +45,12 @@ class Trainer:
             hard_copy(self.target_actor, self.actor)
             hard_copy(self.target_critic, self.critic)
 
-        self.noise = utils.noise.OrnsteinUhlenbeckActionNoise(mu=torch.tensor([0.0, 0.0, 0.0, 0.0], device=device), sigma=0.2, theta=0.15, x0=torch.tensor([0.0, 0.0, 0.0, 0.0], device=device))
+        self.noise = utils.noise.OrnsteinUhlenbeckActionNoise(mu=torch.tensor([0.0, 0.0, 0.0, 0.0], device=device), sigma=0.15, theta=0.35, x0=torch.tensor([0.0, 0.0, 0.0, 0.0], device=device))
 
         self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), self.lr)
         self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), self.lr)
 
-        self.memory = ReplayMemory(2000)  # The larger the better because then the transitions have more chances to be uncorrelated
+        self.memory = ReplayMemory(1000)  # The larger the better because then the transitions have more chances to be uncorrelated
 
         self.screen = utils.screen.init_screen(capture_output="pytorch_float_gpu")
         self.ocr = utils.OCR.init_OCR()
