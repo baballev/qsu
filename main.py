@@ -67,7 +67,7 @@ def perform_action(action, human_clicker):
 
 
 def get_reward(score, previous_score, x, y):
-    return torch.tensor(1.0 * max((score - previous_score), 0), device=device)# - 0.005 * ((x - 0.5)**2 + (y - 0.5)**2)
+    return torch.tensor(1.0 * max((score - previous_score), 0), device=device)  # - 0.005 * ((x - 0.5)**2 + (y - 0.5)**2)
 
 
 ## Training
@@ -82,19 +82,21 @@ def train(episode_nb, learning_rate, load_weights=None, save_name='tests'):
     for i in range(episode_nb):
         utils.osu_routines.launch_random_beatmap()
 
-        state = (utils.screen.get_game_screen(trainer.screen).unsqueeze_(0).sum(1, keepdim=True)/3.0)
+        previous_screen = utils.screen.get_game_screen(trainer.screen).unsqueeze_(0).sum(1, keepdim=True)/3.0
         previous_score = 0
         controls_state = torch.tensor([[0.5, 0.5, 0.0, 0.0]], device=device)
+        current_screen = utils.screen.get_game_screen(trainer.screen).unsqueeze_(0).sum(1, keepdim=True)/3.0
+        state = current_screen - previous_screen
         start = time.time()
         thread = None
-
         #logger = open('./benchmark/log.txt', 'w+')
         for step in range(MAX_STEPS):
             k += 1
             action = trainer.select_exploration_action(state, controls_state)
             #action = trainer.select_exploitation_action(state, controls_state)
+            previous_screen = current_screen
             new_controls_state = perform_action(action, trainer.hc)
-            new_state = (utils.screen.get_game_screen(trainer.screen).unsqueeze_(0).sum(1, keepdim=True)/3.0)
+            current_screen = (utils.screen.get_game_screen(trainer.screen).unsqueeze_(0).sum(1, keepdim=True)/3.0)
             score = utils.OCR.get_score(trainer.screen, trainer.ocr, wndw)
             if (step < 15 and score == -1) or (score - previous_score > 100000):
                 score = 0
@@ -103,11 +105,11 @@ def train(episode_nb, learning_rate, load_weights=None, save_name='tests'):
             if done:
                 new_state = None
             else:
-                #with torch.no_grad():
+                new_state = current_screen - previous_screen
+                with torch.no_grad():
                 #    t = torch.squeeze(trainer.critic(state, controls_state, action))
-                #    torchvision.transforms.ToPILImage()(torch.squeeze(state)).save('./benchmark/' + str(step) + '__' + str(t.item()) + '_.png')
+                    torchvision.transforms.ToPILImage()(torch.squeeze(state)).save('./benchmark/' + str(step) + '__' '''+ str(t.item())''' + '_.png')
                 #    logger.write(str(step) + '___' + str(t.item()) + '___' + str(controls_state) + '___' + str(action) + '\n')
-
                 th = Thread(target=trainer.memory.push, args=(state, action, reward, new_state, controls_state, new_controls_state))
                 th.start()
                 # memory.push(torch.squeeze(state, 0), torch.squeeze(action, 0), torch.tensor(reward).to(device), torch.squeeze(new_state, 0))
@@ -129,18 +131,11 @@ def train(episode_nb, learning_rate, load_weights=None, save_name='tests'):
             if done:
                 break
 
-            # end = time.time()
-            # delta_t += (end - start)
-            # print(delta_t)
-            # start = end
         end = time.time()
         delta_t = end - start
         #logger.close()
         print(str(step) + ' time steps in ' + str(delta_t) + ' s.')
         print(str(step/delta_t) + ' time_steps per second.')
-        # print('Average episode reward: ' + str(episode_average_reward))
-        # print('Average time(s) per step: ' + str(delta_t))
-
         gc.collect()  # Garbage collector at each episode
 
         if i % 10 == 0 and i > 0:

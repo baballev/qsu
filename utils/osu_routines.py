@@ -164,7 +164,7 @@ def return_to_beatmap():
     hc.click()
     time.sleep(0.4)
     hc.click()
-    hc.move((50, 605), 0.6)
+    hc.move((50, 605), 0.9)
     time.sleep(0.15)
     hc.click()
     time.sleep(0.8)
