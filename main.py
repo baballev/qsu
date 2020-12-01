@@ -15,7 +15,7 @@ from trainer import Trainer
 torch.cuda.empty_cache()
 
 BATCH_SIZE = 5
-LEARNING_RATE = 0.00005
+LEARNING_RATE = 0.00002
 GAMMA = 0.999
 TAU = 0.00001
 MAX_STEPS = 50000
@@ -66,8 +66,17 @@ def perform_action(action, human_clicker):
     return torch.tensor([[x, y, left, right]], device=device)
 
 
-def get_reward(score, previous_score, x, y):
-    return torch.tensor(1.0 * max((score - previous_score), 0), device=device)  # - 0.005 * ((x - 0.5)**2 + (y - 0.5)**2)
+def get_reward(score, previous_score, acc, previous_acc, x, y):
+    if acc > previous_acc:
+        bonus = torch.tensor(100.0, device=device)
+    elif acc < previous_acc:
+        bonus = torch.tensor(-100.0, device=device)
+    else:
+        if acc < 0.2:
+            bonus = torch.tensor(-15.0, device=device)
+        else:
+            bonus = torch.tensor(0.0, device=device)
+    return 0.5 * max((score - previous_score), 0) + 0.5 * bonus  # - 0.005 * ((x - 0.5)**2 + (y - 0.5)**2)
 
 
 ## Training
@@ -83,7 +92,8 @@ def train(episode_nb, learning_rate, load_weights=None, save_name='tests'):
         utils.osu_routines.launch_random_beatmap()
 
         previous_screen = utils.screen.get_game_screen(trainer.screen).unsqueeze_(0).sum(1, keepdim=True)/3.0
-        previous_score = 0
+        previous_score = torch.tensor(0.0, device=device)
+        previous_acc = torch.tensor(100.0, device=device)
         controls_state = torch.tensor([[0.5, 0.5, 0.0, 0.0]], device=device)
         current_screen = utils.screen.get_game_screen(trainer.screen).unsqueeze_(0).sum(1, keepdim=True)/3.0
         state = current_screen - previous_screen
@@ -92,15 +102,17 @@ def train(episode_nb, learning_rate, load_weights=None, save_name='tests'):
         #logger = open('./benchmark/log.txt', 'w+')
         for step in range(MAX_STEPS):
             k += 1
-            #action = trainer.select_exploration_action(state, controls_state)
-            action = trainer.select_exploitation_action(state, controls_state)
+            action = trainer.select_exploration_action(state, controls_state)
+            #action = trainer.select_exploitation_action(state, controls_state)
             previous_screen = current_screen
             new_controls_state = perform_action(action, trainer.hc)
             current_screen = (utils.screen.get_game_screen(trainer.screen).unsqueeze_(0).sum(1, keepdim=True)/3.0)
-            score = utils.OCR.get_score(trainer.screen, trainer.ocr, wndw)
+            score, acc = utils.OCR.get_score_acc(trainer.screen, trainer.score_ocr, trainer.acc_ocr, wndw)
             if (step < 15 and score == -1) or (score - previous_score > 100000):
                 score = 0
-            reward = get_reward(score, previous_score, controls_state[0][0], controls_state[0][1])
+            if step < 15 and acc == -1:
+                acc = torch.tensor(100.0, device=device)
+            reward = get_reward(score, previous_score, acc, previous_acc, controls_state[0][0], controls_state[0][1])
             done = (score == -1)
             if done:
                 new_state = None
@@ -120,6 +132,7 @@ def train(episode_nb, learning_rate, load_weights=None, save_name='tests'):
             thread.start()
 
             previous_score = score
+            previous_acc = acc
             state = new_state
             controls_state = new_controls_state
             episode_average_reward += reward
@@ -155,6 +168,6 @@ def train(episode_nb, learning_rate, load_weights=None, save_name='tests'):
 
 if __name__ == '__main__':
     weights_path = ('./weights/actortraining_diff_01-12-2020-299.pt', './weights/critictraining_diff_01-12-2020-299.pt')
-    save_name = 'training_diff_01-12-2020-'
-    train(1, LEARNING_RATE, save_name=save_name, load_weights=weights_path)
+    save_name = 'training_diff&acc_01-12-2020-'
+    train(30, LEARNING_RATE, save_name=save_name, load_weights=weights_path)
 

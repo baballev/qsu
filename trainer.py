@@ -53,7 +53,8 @@ class Trainer:
         self.memory = ReplayMemory(1000)  # The larger the better because then the transitions have more chances to be uncorrelated
 
         self.screen = utils.screen.init_screen(capture_output="pytorch_float_gpu")
-        self.ocr = utils.OCR.init_OCR()
+        self.score_ocr = utils.OCR.init_OCR('./weights/OCR/OCR_score2.pt')
+        self.acc_ocr = utils.OCR.init_OCR('./weights/OCR/OCR_acc2.pt')
         self.hc = pyclick.HumanClicker()
 
     def select_exploration_action(self, state, controls_state):  # Check if the values are ok

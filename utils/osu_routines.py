@@ -158,7 +158,7 @@ def hide_chat(hc):
 
 def return_to_beatmap():
     hc = pyclick.HumanClicker()
-    time.sleep(5)
+    time.sleep(10)
     hc.move((800, 270), 0.8)
     time.sleep(0.2)
     hc.click()

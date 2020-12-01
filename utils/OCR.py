@@ -191,9 +191,6 @@ def get_score_acc(screen, ocr_score, ocr_acc, wndw):
                 return -1, -1
         acc = [score_img[:, 33:, -72:-60], score_img[:, 33:, -60:-48], score_img[:, 33:, -49:-37],  # before .
                score_img[:, 33:, -28: -16], score_img[:, 33:, -17:-5]]  # after .
-        for i in range(5):
-            transforms.ToPILImage()(acc[i]).save(str(i) + '.png')
-
         score_img, acc = torch.stack([score_img[:, :27, j*18:(j+1)*18] for j in range(8)], 0), torch.stack(acc, 0)
         if score_img.shape[2] > 27:
             return -1, -1
@@ -211,7 +208,7 @@ def get_score_acc(screen, ocr_score, ocr_acc, wndw):
             if indices[1] != 0:
                 accuracy = -1
             else:
-                accuracy = 100.0
+                accuracy = torch.tensor(100.0, device=device)
 
     return s.float(), accuracy
 
