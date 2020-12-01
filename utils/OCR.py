@@ -14,8 +14,8 @@ import utils.screen
 import utils.osu_routines
 
 SCORE_REGION = (875, 27, 1019, 54)
-ACCURACY_REGION = (916, 61, 1024, 87)  # OBSOLETE
-HIDE_CHAT_REGION = (971, 611, 1018, 626)
+SCORE_ACCURACY_REGION = (875, 27, 1019, 77)
+HIDE_CHAT_REGION = (971, 611, 1018, 626)  # Obsolete
 
 
 '''
@@ -155,6 +155,30 @@ def get_score(screen, ocr, wndw):
     return s.float()
 
 
+def get_score_acc(screen, ocr, wndw):
+    global counter
+    with torch.no_grad():
+        score_img = utils.screen.get_screen_region(screen, region=SCORE_ACCURACY_REGION)
+        torchvision.transforms.ToPILImage()(score_img).save('tmp.png')
+        if counter % 5 == 0:
+            if not(score_img.sum()) or win32gui.GetWindowText(wndw) == 'osu!':
+                return -1
+        acc = [score_img[:, 33:, -72:-60], score_img[:, 33:, -60:-48], score_img[:, 33:, -49:-37],  # before .
+               score_img[:, 33:, -28: -16], score_img[:, 33:, -17:-5]]  # after ., 12x17 images
+        for i, t in enumerate(acc):
+            torchvision.transforms.ToPILImage()(t).save(str(i) + '.png')
+        score_img, accuracy_img = torch.stack([score_img[:, :27, j*18:(j+1)*18] for j in range(8)], 0), torch.stack(acc, 0)
+        if score_img.shape[2] > 27:
+            return -1
+        score_img = ocr(score_img)
+        _, indices = torch.max(score_img, 1)
+        s = 0.0
+        for n, indic in enumerate(indices):
+            s += indic * 10**(7-n)
+        counter += 1
+    return s.float()
+
+
 if __name__ == '__main__':
     ## DATASET MAKER
     #utils.osu_routines.start_osu()
@@ -168,11 +192,11 @@ if __name__ == '__main__':
     #ocr.train()
 
     ## GET_SCORE TESTS
-    utils.osu_routines.start_osu()
+    process, wndw = utils.osu_routines.start_osu()
     screen = utils.screen.init_screen()
     ocr = init_OCR('../weights/OCR/OCR_digit.pt')
     while True:
-        time.sleep(2)
+        time.sleep(4)
         sho = utils.screen.get_screen(screen)
-        print(get_score(sho, ocr))
+        print(get_score_acc(screen, ocr, wndw))
 
