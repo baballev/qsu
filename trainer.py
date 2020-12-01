@@ -27,7 +27,7 @@ def soft_update(target, source, tau):  # y = TAU * x  +  (1 - TAU) * y
 
 class Trainer:
 
-    def __init__(self, batch_size=5, lr=0.0001, tau=0.0001, gamma=0.999, load_weights=None, width=735, height=546): # ToDo: change width and height of state
+    def __init__(self, batch_size=5, lr=0.0001, tau=0.0001, gamma=0.999, load_weights=None, width=735, height=546):
         self.batch_size = batch_size
         self.lr = lr
         self.tau = tau
@@ -45,7 +45,7 @@ class Trainer:
             hard_copy(self.target_actor, self.actor)
             hard_copy(self.target_critic, self.critic)
 
-        self.noise = utils.noise.OrnsteinUhlenbeckActionNoise(mu=torch.tensor([0.0, 0.0, 0.0, 0.0], device=device), sigma=0.15, theta=0.35, x0=torch.tensor([0.0, 0.0, 0.0, 0.0], device=device))
+        self.noise = utils.noise.OrnsteinUhlenbeckActionNoise(mu=torch.tensor([0.0, 0.0, 0.0, 0.0], device=device), sigma=0.25, theta=0.30, x0=torch.tensor([0.0, 0.0, 0.0, 0.0], device=device))
 
         self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), self.lr)
         self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), self.lr)
@@ -58,7 +58,7 @@ class Trainer:
 
     def select_exploration_action(self, state, controls_state):  # Check if the values are ok
         action = self.actor(state, controls_state).detach()
-        new_action = action + self.noise.get_noise()  # ToDo: Check the noise progression with print or plot
+        new_action = action + self.noise.get_noise()
         return new_action
 
     def select_exploitation_action(self, state, controls_state):
@@ -107,7 +107,6 @@ class Trainer:
 
         soft_update(self.target_actor, self.actor, self.tau)
         soft_update(self.target_critic, self.critic, self.tau)
-       # Todo: Add verbose ?
 
 
 if __name__ == '__main__':

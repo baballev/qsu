@@ -45,7 +45,7 @@ def perform_action(action, human_clicker):
     else:
         pyautogui.mouseUp(button='left')
         left = 0.0
-    if action[0][3] > 0.5:  # ToDo: variabiliser
+    if action[0][3] > 0.5:
         pyautogui.mouseDown(button='right')
         right = 1.0
     else:
