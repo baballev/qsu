@@ -88,9 +88,10 @@ def train(episode_nb, learning_rate, load_weights=None, save_name='tests'):
     episode_average_reward = 0.0
     trainer = Trainer(load_weights=load_weights, lr=learning_rate)  # ToDo: Modify parameters
     k = 0
+    episodes_reward = 0.0
+    c = 0
     for i in range(episode_nb):
         utils.osu_routines.launch_random_beatmap()
-
         previous_screen = utils.screen.get_game_screen(trainer.screen).unsqueeze_(0).sum(1, keepdim=True)/3.0
         previous_score = torch.tensor(0.0, device=device)
         previous_acc = torch.tensor(100.0, device=device)
@@ -102,13 +103,13 @@ def train(episode_nb, learning_rate, load_weights=None, save_name='tests'):
         #logger = open('./benchmark/log.txt', 'w+')
         for step in range(MAX_STEPS):
             k += 1
-            action = trainer.select_exploration_action(state, controls_state)
-            #action = trainer.select_exploitation_action(state, controls_state)
+            #action = trainer.select_exploration_action(state, controls_state)
+            action = trainer.select_exploitation_action(state, controls_state)
             previous_screen = current_screen
             new_controls_state = perform_action(action, trainer.hc)
             current_screen = (utils.screen.get_game_screen(trainer.screen).unsqueeze_(0).sum(1, keepdim=True)/3.0)
             score, acc = utils.OCR.get_score_acc(trainer.screen, trainer.score_ocr, trainer.acc_ocr, wndw)
-            if (step < 15 and score == -1) or (score - previous_score > 10*(score+100)):
+            if (step < 15 and score == -1) or (score - previous_score > 5*(previous_score+100)):
                 score = previous_score
             if step < 15 and acc == -1:
                 acc = previous_acc
@@ -131,7 +132,6 @@ def train(episode_nb, learning_rate, load_weights=None, save_name='tests'):
                 thread.join()
             thread = Thread(target=trainer.optimize)
             thread.start()
-
             previous_score = score
             previous_acc = acc
             state = new_state
@@ -139,7 +139,10 @@ def train(episode_nb, learning_rate, load_weights=None, save_name='tests'):
             episode_average_reward += reward
             if k % 1000 == 0:
                 print('Reward average over last 1000 steps: ')
-                print(episode_average_reward/1000)
+                tmp = episode_average_reward/1000
+                print(tmp)
+                episodes_reward += tmp
+                c += 1
                 episode_average_reward = 0.0
 
             if done:
@@ -153,6 +156,10 @@ def train(episode_nb, learning_rate, load_weights=None, save_name='tests'):
         gc.collect()  # Garbage collector at each episode
 
         if i % 15 == 0 and i > 0:
+            print('Mean reward over last 15 episodes: ')
+            print(episodes_reward/c)
+            c = 0
+            episodes_reward = 0.0
             trainer.save_model(save_name, num=i)
 
         utils.osu_routines.return_to_beatmap()
@@ -168,7 +175,7 @@ def train(episode_nb, learning_rate, load_weights=None, save_name='tests'):
 
 
 if __name__ == '__main__':
-    weights_path = ('./weights/actortraining_diff&acc_03-12-2020-150.pt', './weights/critictraining_diff&acc_03-12-2020-150.pt')
+    weights_path = ('./weights/actorbest_03-12-2020-59.pt', './weights/criticbest_03-12-2020-59.pt')
     save_name = 'best_03-12-2020-'
-    train(90, LEARNING_RATE, save_name=save_name, load_weights=weights_path)
+    train(1, LEARNING_RATE, save_name=save_name, load_weights=weights_path)
 
