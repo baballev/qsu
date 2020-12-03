@@ -45,7 +45,7 @@ class Trainer:
             hard_copy(self.target_actor, self.actor)
             hard_copy(self.target_critic, self.critic)
 
-        self.noise = utils.noise.OrnsteinUhlenbeckActionNoise(mu=torch.tensor([0.0, 0.0, 0.0, 0.0], device=device), sigma=0.25, theta=0.30, x0=torch.tensor([0.0, 0.0, 0.0, 0.0], device=device))
+        self.noise = utils.noise.OrnsteinUhlenbeckActionNoise(mu=torch.tensor([0.0, 0.0, 0.0, 0.0], device=device), sigma=0.17, theta=0.35, x0=torch.tensor([0.0, 0.0, 0.0, 0.0], device=device))
 
         self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), self.lr)
         self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), self.lr)

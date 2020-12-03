@@ -15,7 +15,7 @@ from trainer import Trainer
 torch.cuda.empty_cache()
 
 BATCH_SIZE = 5
-LEARNING_RATE = 0.00002
+LEARNING_RATE = 0.00003
 GAMMA = 0.999
 TAU = 0.00001
 MAX_STEPS = 50000
@@ -52,13 +52,13 @@ def perform_action(action, human_clicker):
         pyautogui.mouseUp(button='right')
         right = 0.0
     if y*HEIGHT < 54:
-        thread = Thread(target=threaded_mouse_move, args=(min(int(x*WIDTH)+145, 850), 54+26, 0.12, human_clicker))
+        thread = Thread(target=threaded_mouse_move, args=(min(int(x*WIDTH)+145, 830), 54+26, 0.12, human_clicker))
         thread.start()
     elif y*HEIGHT > 560:
         thread = Thread(target=threaded_mouse_move, args=(min(int(x*WIDTH)+145, 830), 560+26, 0.12, human_clicker))
         thread.start()
-    elif x*WIDTH > 705:
-        thread = Thread(target=threaded_mouse_move, args=(705+145, int(y*HEIGHT)+26, 0.12, human_clicker))
+    elif x*WIDTH > 685:
+        thread = Thread(target=threaded_mouse_move, args=(685+145, int(y*HEIGHT)+26, 0.12, human_clicker))
         thread.start()
     else:
         thread = Thread(target=threaded_mouse_move, args=(max(int(x*WIDTH)+145, 145), int(y*HEIGHT)+26, 0.12, human_clicker))
@@ -66,13 +66,13 @@ def perform_action(action, human_clicker):
     return torch.tensor([[x, y, left, right]], device=device)
 
 
-def get_reward(score, previous_score, acc, previous_acc, x, y):
+def get_reward(score, previous_score, acc, previous_acc, x, y, step):
     if acc > previous_acc:
         bonus = torch.tensor(100.0, device=device)
     elif acc < previous_acc:
-        bonus = torch.tensor(-100.0, device=device)
+        bonus = torch.tensor(-50.0, device=device)
     else:
-        if acc < 0.2:
+        if acc < 0.2 + 0.1 * (step//500):
             bonus = torch.tensor(-15.0, device=device)
         else:
             bonus = torch.tensor(0.0, device=device)
@@ -108,11 +108,12 @@ def train(episode_nb, learning_rate, load_weights=None, save_name='tests'):
             new_controls_state = perform_action(action, trainer.hc)
             current_screen = (utils.screen.get_game_screen(trainer.screen).unsqueeze_(0).sum(1, keepdim=True)/3.0)
             score, acc = utils.OCR.get_score_acc(trainer.screen, trainer.score_ocr, trainer.acc_ocr, wndw)
-            if (step < 15 and score == -1) or (score - previous_score > 100000):
-                score = 0
+            if (step < 15 and score == -1) or (score - previous_score > 10*(score+100)):
+                score = previous_score
             if step < 15 and acc == -1:
-                acc = torch.tensor(100.0, device=device)
-            reward = get_reward(score, previous_score, acc, previous_acc, controls_state[0][0], controls_state[0][1])
+                acc = previous_acc
+            reward = get_reward(score, previous_score, acc, previous_acc, controls_state[0][0], controls_state[0][1], step)
+            #print(reward)
             done = (score == -1)
             if done:
                 new_state = None
@@ -167,7 +168,7 @@ def train(episode_nb, learning_rate, load_weights=None, save_name='tests'):
 
 
 if __name__ == '__main__':
-    weights_path = ('./weights/actortraining_diff_01-12-2020-299.pt', './weights/critictraining_diff_01-12-2020-299.pt')
-    save_name = 'training_diff&acc_01-12-2020-'
-    train(30, LEARNING_RATE, save_name=save_name, load_weights=weights_path)
+    weights_path = ('./weights/actortraining_diff&acc_03-12-2020-150.pt', './weights/critictraining_diff&acc_03-12-2020-150.pt')
+    save_name = 'best_03-12-2020-'
+    train(90, LEARNING_RATE, save_name=save_name, load_weights=weights_path)
 
