@@ -60,8 +60,7 @@ class OrnsteinUhlenbeckActionNoise(ActionNoise):
         self.x_prev = self.x0 if self.x0 is not None else torch.zeros_like(self.mu, device=device)
 
     def get_noise(self):
-        tmp = self.sigma * torch.sqrt(self.dt) * torch.randn(size=self.mu.shape, device=device)
-        x = self.x_prev + self.theta * (self.mu - self.x_prev) * self.dt + tmp
+        x = self.x_prev + self.theta * (self.mu - self.x_prev) * self.dt + self.sigma * torch.sqrt(self.dt) * torch.randn(size=self.mu.shape, device=device)
         self.x_prev = x
         return x
 

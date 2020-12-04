@@ -186,7 +186,7 @@ def get_score_acc(screen, ocr_score, ocr_acc, wndw):
     global counter
     with torch.no_grad():
         score_img = utils.screen.get_screen_region(screen, region=SCORE_ACCURACY_REGION)
-        if counter % 5 == 0:
+        if counter % 3 == 0:
             if not(score_img.sum()) or win32gui.GetWindowText(wndw) == 'osu!':
                 return -1, -1
         acc = [score_img[:, 33:, -72:-60], score_img[:, 33:, -60:-48], score_img[:, 33:, -49:-37],  # before .
@@ -226,7 +226,6 @@ if __name__ == '__main__':
     # ocr.train('OCR_acc2.pt', mode='acc', epochs=50)
 
     ## GET_SCORE TESTS
-
     process, wndw = utils.osu_routines.start_osu()
     screen = utils.screen.init_screen()
 

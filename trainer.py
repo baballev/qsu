@@ -45,12 +45,12 @@ class Trainer:
             hard_copy(self.target_actor, self.actor)
             hard_copy(self.target_critic, self.critic)
 
-        self.noise = utils.noise.OrnsteinUhlenbeckActionNoise(mu=torch.tensor([0.0, 0.0, 0.0, 0.0], device=device), sigma=0.17, theta=0.35, x0=torch.tensor([0.0, 0.0, 0.0, 0.0], device=device))
+        self.noise = utils.noise.OrnsteinUhlenbeckActionNoise(mu=torch.tensor([0.0, 0.0, 0.0, 0.0], device=device), sigma=0.2, theta=0.15, x0=torch.tensor([0.0, 0.0, 0.0, 0.0], device=device))
 
-        self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), self.lr)
-        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), self.lr)
+        self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), self.lr, weight_decay=0.001)
+        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), self.lr, weight_decay=0.001)
 
-        self.memory = ReplayMemory(1000)  # The larger the better because then the transitions have more chances to be uncorrelated
+        self.memory = ReplayMemory(1500)  # The larger the better because then the transitions have more chances to be uncorrelated
 
         self.screen = utils.screen.init_screen(capture_output="pytorch_float_gpu")
         self.score_ocr = utils.OCR.init_OCR('./weights/OCR/OCR_score2.pt')
@@ -96,6 +96,7 @@ class Trainer:
         # print(loss_critic)
         self.critic_optimizer.zero_grad()
         loss_critic.backward()
+        #torch.nn.utils.clip_grad_norm_(self.critic.parameters(), 1.0)
         self.critic_optimizer.step()
 
         # ---------- Actor ----------
@@ -104,6 +105,7 @@ class Trainer:
         # print(loss_actor)
         self.actor_optimizer.zero_grad()
         loss_actor.backward()
+        #torch.nn.utils.clip_grad_norm_(self.actor.parameters(), 1.0)
         self.actor_optimizer.step()
 
         soft_update(self.target_actor, self.actor, self.tau)

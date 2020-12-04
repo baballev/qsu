@@ -15,9 +15,9 @@ from trainer import Trainer
 torch.cuda.empty_cache()
 
 BATCH_SIZE = 5
-LEARNING_RATE = 0.00003
+LEARNING_RATE = 0.00001
 GAMMA = 0.999
-TAU = 0.00001
+TAU = 0.0001
 MAX_STEPS = 50000
 WIDTH = 735
 HEIGHT = 546
@@ -68,25 +68,25 @@ def perform_action(action, human_clicker):
 
 def get_reward(score, previous_score, acc, previous_acc, x, y, step):
     if acc > previous_acc:
-        bonus = torch.tensor(100.0, device=device)
+        bonus = torch.tensor(1.0, device=device)
     elif acc < previous_acc:
-        bonus = torch.tensor(-50.0, device=device)
+        bonus = torch.tensor(-0.5, device=device)
     else:
         if acc < 0.2 + 0.1 * (step//500):
-            bonus = torch.tensor(-15.0, device=device)
+            bonus = torch.tensor(-0.1, device=device)
         else:
             bonus = torch.tensor(0.0, device=device)
-    return 0.5 * max((score - previous_score), 0) + 0.5 * bonus  # - 0.005 * ((x - 0.5)**2 + (y - 0.5)**2)
+    return torch.log10(max((score - previous_score), torch.tensor(1.0, device=device))) + bonus  # - 0.005 * ((x - 0.5)**2 + (y - 0.5)**2)
 
 
 ## Training
-def train(episode_nb, learning_rate, load_weights=None, save_name='tests'):
+def train(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights=None, save_name='tests'):
     # Osu routine
     process, wndw = utils.osu_routines.start_osu()
     utils.osu_routines.move_to_songs(star=1)
     utils.osu_routines.enable_nofail()
     episode_average_reward = 0.0
-    trainer = Trainer(load_weights=load_weights, lr=learning_rate)  # ToDo: Modify parameters
+    trainer = Trainer(load_weights=load_weights, lr=learning_rate, batch_size=batch_size, tau=TAU, gamma=GAMMA)
     k = 0
     episodes_reward = 0.0
     c = 0
@@ -103,8 +103,8 @@ def train(episode_nb, learning_rate, load_weights=None, save_name='tests'):
         #logger = open('./benchmark/log.txt', 'w+')
         for step in range(MAX_STEPS):
             k += 1
-            #action = trainer.select_exploration_action(state, controls_state)
-            action = trainer.select_exploitation_action(state, controls_state)
+            action = trainer.select_exploration_action(state, controls_state)
+            #action = trainer.select_exploitation_action(state, controls_state)
             previous_screen = current_screen
             new_controls_state = perform_action(action, trainer.hc)
             current_screen = (utils.screen.get_game_screen(trainer.screen).unsqueeze_(0).sum(1, keepdim=True)/3.0)
@@ -122,6 +122,7 @@ def train(episode_nb, learning_rate, load_weights=None, save_name='tests'):
                 new_state = current_screen - previous_screen
                 #with torch.no_grad():
                 #    t = torch.squeeze(trainer.critic(state, controls_state, action))
+                #    print(t)
                 #    torchvision.transforms.ToPILImage()(torch.squeeze(state)).save('./benchmark/' + str(step) + '__' '''+ str(t.item())''' + '_.png')
                 #    logger.write(str(step) + '___' + str(t.item()) + '___' + str(controls_state) + '___' + str(action) + '\n')
                 th = Thread(target=trainer.memory.push, args=(state, action, reward, new_state, controls_state, new_controls_state))
@@ -155,8 +156,8 @@ def train(episode_nb, learning_rate, load_weights=None, save_name='tests'):
         print(str(step/delta_t) + ' time_steps per second.')
         gc.collect()  # Garbage collector at each episode
 
-        if i % 15 == 0 and i > 0:
-            print('Mean reward over last 15 episodes: ')
+        if i % 30 == 0 and i > 0:
+            print('Mean reward over last 30 episodes: ')
             print(episodes_reward/c)
             c = 0
             episodes_reward = 0.0
@@ -167,7 +168,9 @@ def train(episode_nb, learning_rate, load_weights=None, save_name='tests'):
         pyautogui.mouseUp(button='right')
         pyautogui.mouseUp(button='left')
 
-    if (episode_nb - 1) % 10 != 0:
+    if (episode_nb - 1) % 15 != 0:
+        print('Mean reward over last episodes: ')
+        print(episodes_reward/c)
         trainer.save_model(save_name, num=episode_nb-1)
 
     trainer.screen.stop()
@@ -175,7 +178,7 @@ def train(episode_nb, learning_rate, load_weights=None, save_name='tests'):
 
 
 if __name__ == '__main__':
-    weights_path = ('./weights/actorbest_03-12-2020-59.pt', './weights/criticbest_03-12-2020-59.pt')
-    save_name = 'best_03-12-2020-'
-    train(1, LEARNING_RATE, save_name=save_name, load_weights=weights_path)
+    weights_path = ('./weights/actornew_best1_04-12-2020-14.pt', './weights/criticnew_best1_04-12-2020-14.pt')
+    save_name = 'new_best1_04-12-2020-'
+    train(15, LEARNING_RATE, save_name=save_name, load_weights=weights_path)
 
