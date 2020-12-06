@@ -15,7 +15,7 @@ from trainer import Trainer
 torch.cuda.empty_cache()
 
 BATCH_SIZE = 5
-LEARNING_RATE = 0.00001
+LEARNING_RATE = 0.000001
 GAMMA = 0.999
 TAU = 0.0001
 MAX_STEPS = 50000
@@ -52,21 +52,21 @@ def perform_action(action, human_clicker):
         pyautogui.mouseUp(button='right')
         right = 0.0
     if y*HEIGHT < 54:
-        thread = Thread(target=threaded_mouse_move, args=(min(int(x*WIDTH)+145, 830), 54+26, 0.12, human_clicker))
+        thread = Thread(target=threaded_mouse_move, args=(min(int(x*WIDTH)+145, 830), 54+26, 0.09, human_clicker))
         thread.start()
     elif y*HEIGHT > 560:
-        thread = Thread(target=threaded_mouse_move, args=(min(int(x*WIDTH)+145, 830), 560+26, 0.12, human_clicker))
+        thread = Thread(target=threaded_mouse_move, args=(min(int(x*WIDTH)+145, 830), 560+26, 0.09, human_clicker))
         thread.start()
     elif x*WIDTH > 685:
-        thread = Thread(target=threaded_mouse_move, args=(685+145, int(y*HEIGHT)+26, 0.12, human_clicker))
+        thread = Thread(target=threaded_mouse_move, args=(685+145, int(y*HEIGHT)+26, 0.09, human_clicker))
         thread.start()
     else:
-        thread = Thread(target=threaded_mouse_move, args=(max(int(x*WIDTH)+145, 145), int(y*HEIGHT)+26, 0.12, human_clicker))
+        thread = Thread(target=threaded_mouse_move, args=(max(int(x*WIDTH)+145, 145), int(y*HEIGHT)+26, 0.09, human_clicker))
         thread.start()
-    return torch.tensor([[x, y, left, right]], device=device)
+    return torch.tensor([[left, right]], device=device)
 
 
-def get_reward(score, previous_score, acc, previous_acc, x, y, step):
+def get_reward(score, previous_score, acc, previous_acc, step):
     if acc > previous_acc:
         bonus = torch.tensor(1.0, device=device)
     elif acc < previous_acc:
@@ -80,55 +80,61 @@ def get_reward(score, previous_score, acc, previous_acc, x, y, step):
 
 
 ## Training
-def train(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights=None, save_name='tests'):
+def train(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights=None, save_name='tests', beatmap_name=None, star=1):
     # Osu routine
     process, wndw = utils.osu_routines.start_osu()
-    utils.osu_routines.move_to_songs(star=1)
+    utils.osu_routines.move_to_songs(star=star)
+    if beatmap_name is not None:
+        utils.osu_routines.select_beatmap(beatmap_name)
     utils.osu_routines.enable_nofail()
     episode_average_reward = 0.0
     trainer = Trainer(load_weights=load_weights, lr=learning_rate, batch_size=batch_size, tau=TAU, gamma=GAMMA)
     k = 0
-    episodes_reward = 0.0
+    episodes_reward = -5.0
     c = 0
     for i in range(episode_nb):
+        best = 0.0
         utils.osu_routines.launch_random_beatmap()
-        previous_screen = utils.screen.get_game_screen(trainer.screen).unsqueeze_(0).sum(1, keepdim=True)/3.0
+        #previous_screen = utils.screen.get_game_screen(trainer.screen).unsqueeze_(0).sum(1, keepdim=True)/3.0
         previous_score = torch.tensor(0.0, device=device)
         previous_acc = torch.tensor(100.0, device=device)
         controls_state = torch.tensor([[0.5, 0.5, 0.0, 0.0]], device=device)
         current_screen = utils.screen.get_game_screen(trainer.screen).unsqueeze_(0).sum(1, keepdim=True)/3.0
-        state = current_screen - previous_screen
+        state = current_screen #- previous_screen
         start = time.time()
         thread = None
         #logger = open('./benchmark/log.txt', 'w+')
         for step in range(MAX_STEPS):
             k += 1
-            action = trainer.select_exploration_action(state, controls_state)
-            #action = trainer.select_exploitation_action(state, controls_state)
-            previous_screen = current_screen
-            new_controls_state = perform_action(action, trainer.hc)
-            current_screen = (utils.screen.get_game_screen(trainer.screen).unsqueeze_(0).sum(1, keepdim=True)/3.0)
-            score, acc = utils.OCR.get_score_acc(trainer.screen, trainer.score_ocr, trainer.acc_ocr, wndw)
-            if (step < 15 and score == -1) or (score - previous_score > 5*(previous_score+100)):
-                score = previous_score
-            if step < 15 and acc == -1:
-                acc = previous_acc
-            reward = get_reward(score, previous_score, acc, previous_acc, controls_state[0][0], controls_state[0][1], step)
-            #print(reward)
-            done = (score == -1)
-            if done:
-                new_state = None
-            else:
-                new_state = current_screen - previous_screen
-                #with torch.no_grad():
-                #    t = torch.squeeze(trainer.critic(state, controls_state, action))
-                #    print(t)
-                #    torchvision.transforms.ToPILImage()(torch.squeeze(state)).save('./benchmark/' + str(step) + '__' '''+ str(t.item())''' + '_.png')
-                #    logger.write(str(step) + '___' + str(t.item()) + '___' + str(controls_state) + '___' + str(action) + '\n')
-                th = Thread(target=trainer.memory.push, args=(state, action, reward, new_state, controls_state, new_controls_state))
-                th.start()
-                # memory.push(torch.squeeze(state, 0), torch.squeeze(action, 0), torch.tensor(reward).to(device), torch.squeeze(new_state, 0))
+            with torch.no_grad():
+                action = trainer.select_exploration_action(state, controls_state, i)
+                #action = trainer.select_exploitation_action(state, controls_state)
+                new_controls_state = perform_action(action, trainer.hc)
+                #previous_screen = current_screen
+                current_screen = (utils.screen.get_game_screen(trainer.screen).unsqueeze_(0).sum(1, keepdim=True)/3.0)
+                score, acc = utils.OCR.get_score_acc(trainer.screen, trainer.score_ocr, trainer.acc_ocr, wndw)
+                new_x, new_y = pyautogui.position()
+                new_controls_state = torch.cat((torch.tensor([[new_x, new_y]], dtype=torch.float32, device=device), new_controls_state), 1)
+                if (step < 15 and score == -1) or (score - previous_score > 5*(previous_score+100)):
+                    score = previous_score
+                if step < 15 and acc == -1:
+                    acc = previous_acc
+                reward = get_reward(score, previous_score, acc, previous_acc, step)
+                #print(reward)
+                done = (score == -1)
+                if done:
+                    new_state = None
+                else:
+                    new_state = current_screen# - previous_screen
+                    #with torch.no_grad():
+                    #    t = torch.squeeze(trainer.critic(state, controls_state, action))
+                    #    print(t)
+                    #    torchvision.transforms.ToPILImage()(torch.squeeze(state)).save('./benchmark/' + str(step) + '__' '''+ str(t.item())''' + '_.png')
+                    #    logger.write(str(step) + '___' + str(t.item()) + '___' + str(controls_state) + '___' + str(action) + '\n')
+                    th = Thread(target=trainer.memory.push, args=(state, action, reward, new_state, controls_state, new_controls_state))
+                    th.start()
 
+                    # memory.push(torch.squeeze(state, 0), torch.squeeze(action, 0), torch.tensor(reward).to(device), torch.squeeze(new_state, 0))
             if thread is not None:
                 thread.join()
             thread = Thread(target=trainer.optimize)
@@ -156,12 +162,19 @@ def train(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights=None, s
         print(str(step/delta_t) + ' time_steps per second.')
         gc.collect()  # Garbage collector at each episode
 
-        if i % 30 == 0 and i > 0:
-            print('Mean reward over last 30 episodes: ')
+        if i % 20 == 0 and i > 0:
+            print('Mean reward over last 20 episodes: ')
             print(episodes_reward/c)
+            if episodes_reward/c > best:
+                trainer(save_name + 'best', num=0)
             c = 0
             episodes_reward = 0.0
-            trainer.save_model(save_name, num=i)
+            if beatmap_name is not None:
+                tmp = beatmap_name + save_name
+            else:
+                tmp = save_name
+            trainer.save_model(tmp, num=i)
+
 
         utils.osu_routines.return_to_beatmap()
         trainer.noise.reset()
@@ -171,14 +184,18 @@ def train(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights=None, s
     if (episode_nb - 1) % 15 != 0:
         print('Mean reward over last episodes: ')
         print(episodes_reward/c)
-        trainer.save_model(save_name, num=episode_nb-1)
+        if beatmap_name is not None:
+            tmp = beatmap_name + save_name
+        else:
+            tmp = save_name
+        trainer.save_model(tmp, num=episode_nb-1)
 
     trainer.screen.stop()
     utils.osu_routines.stop_osu(process)
 
 
 if __name__ == '__main__':
-    weights_path = ('./weights/actornew_best1_04-12-2020-14.pt', './weights/criticnew_best1_04-12-2020-14.pt')
-    save_name = 'new_best1_04-12-2020-'
-    train(15, LEARNING_RATE, save_name=save_name, load_weights=weights_path)
+    weights_path = ('./weights/actorcheatreal_04-12-2020-7.pt', './weights/actorcheatreal_04-12-2020-7.pt')
+    save_name = '_06-12-2020-'
+    train(100, LEARNING_RATE, save_name=save_name, load_weights=weights_path, beatmap_name="cheatreal", star=3)
 
