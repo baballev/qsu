@@ -15,9 +15,9 @@ from trainer import Trainer
 torch.cuda.empty_cache()
 
 BATCH_SIZE = 5
-LEARNING_RATE = 0.000001
+LEARNING_RATE = 0.00001
 GAMMA = 0.999
-TAU = 0.0001
+TAU = 0.00001
 MAX_STEPS = 50000
 WIDTH = 735
 HEIGHT = 546
@@ -70,10 +70,10 @@ def get_reward(score, previous_score, acc, previous_acc, step):
     if acc > previous_acc:
         bonus = torch.tensor(1.0, device=device)
     elif acc < previous_acc:
-        bonus = torch.tensor(-0.5, device=device)
+        bonus = torch.tensor(-0.3, device=device)
     else:
         if acc < 0.2 + 0.1 * (step//500):
-            bonus = torch.tensor(-0.1, device=device)
+            bonus = torch.tensor(-0.3, device=device)
         else:
             bonus = torch.tensor(0.0, device=device)
     return torch.log10(max((score - previous_score), torch.tensor(1.0, device=device))) + bonus  # - 0.005 * ((x - 0.5)**2 + (y - 0.5)**2)
@@ -107,8 +107,10 @@ def train(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights=None, s
         for step in range(MAX_STEPS):
             k += 1
             with torch.no_grad():
-                action = trainer.select_exploration_action(state, controls_state, i)
+                action = trainer.select_exploration_action(state, controls_state, i, step)
                 #action = trainer.select_exploitation_action(state, controls_state)
+                #if step % 50 == 0 and step>0:
+                #    print(action)
                 new_controls_state = perform_action(action, trainer.hc)
                 #previous_screen = current_screen
                 current_screen = (utils.screen.get_game_screen(trainer.screen).unsqueeze_(0).sum(1, keepdim=True)/3.0)
@@ -126,19 +128,19 @@ def train(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights=None, s
                     new_state = None
                 else:
                     new_state = current_screen# - previous_screen
-                    #with torch.no_grad():
-                    #    t = torch.squeeze(trainer.critic(state, controls_state, action))
-                    #    print(t)
+                    #t = torch.squeeze(trainer.critic(state, controls_state, action))
+                    #print(t)
                     #    torchvision.transforms.ToPILImage()(torch.squeeze(state)).save('./benchmark/' + str(step) + '__' '''+ str(t.item())''' + '_.png')
                     #    logger.write(str(step) + '___' + str(t.item()) + '___' + str(controls_state) + '___' + str(action) + '\n')
                     th = Thread(target=trainer.memory.push, args=(state, action, reward, new_state, controls_state, new_controls_state))
                     th.start()
 
-                    # memory.push(torch.squeeze(state, 0), torch.squeeze(action, 0), torch.tensor(reward).to(device), torch.squeeze(new_state, 0))
+                #trainer.memory.push(state, action, reward, new_state, controls_state, new_controls_state)
             if thread is not None:
                 thread.join()
             thread = Thread(target=trainer.optimize)
             thread.start()
+            #trainer.optimize()
             previous_score = score
             previous_acc = acc
             state = new_state
@@ -175,7 +177,6 @@ def train(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights=None, s
                 tmp = save_name
             trainer.save_model(tmp, num=i)
 
-
         utils.osu_routines.return_to_beatmap()
         trainer.noise.reset()
         pyautogui.mouseUp(button='right')
@@ -195,7 +196,7 @@ def train(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights=None, s
 
 
 if __name__ == '__main__':
-    weights_path = ('./weights/actorcheatreal_04-12-2020-7.pt', './weights/actorcheatreal_04-12-2020-7.pt')
-    save_name = '_06-12-2020-'
-    train(100, LEARNING_RATE, save_name=save_name, load_weights=weights_path, beatmap_name="cheatreal", star=3)
+    weights_path = ('./weights/actorcheatreal_07-12-2020-9.pt', './weights/criticcheatreal_07-12-2020-9.pt')
+    save_name = '_bis_07-12-2020-'
+    train(8, LEARNING_RATE, save_name=save_name, load_weights=weights_path, beatmap_name="cheatreal", star=3)
 

@@ -11,7 +11,7 @@ from memory import ReplayMemory
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-DECAY = 0.995
+DECAY = 0.999
 
 
 ## IMPORTANT NOTE: THE LARGE MAJORITY of the code was taken or inspired from:
@@ -49,8 +49,8 @@ class Trainer:
 
         self.noise = utils.noise.OrnsteinUhlenbeckActionNoise(mu=torch.tensor([0.0, 0.0, 0.0, 0.0], device=device), sigma=0.2, theta=0.15, x0=torch.tensor([0.0, 0.0, 0.0, 0.0], device=device))
 
-        self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), self.lr)
-        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), 2*self.lr)
+        self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), self.lr/10.0, eps=0.001)
+        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), self.lr, eps=0.001)
 
         self.memory = ReplayMemory(1500)  # The larger the better because then the transitions have more chances to be uncorrelated
 
@@ -59,10 +59,12 @@ class Trainer:
         self.acc_ocr = utils.OCR.init_OCR('./weights/OCR/OCR_acc2.pt')
         self.hc = pyclick.HumanClicker()
 
-    def select_exploration_action(self, state, controls_state, step_num=0):  # Check if the values are ok
+    def select_exploration_action(self, state, controls_state, episode_num=0, step_num=1):  # Check if the values are ok
         action = self.actor(state, controls_state).detach()
-        new_action = action + DECAY**(step_num +1) * self.noise.get_noise()
-        return new_action
+        if step_num % 50 == 0:
+            print(action)
+        new_action = action + DECAY**(episode_num +1) * self.noise.get_noise()
+        return torch.clip(new_action, 0.0, 1.0)
 
     def select_exploitation_action(self, state, controls_state):
         action = self.target_actor(state, controls_state).detach()
@@ -96,7 +98,6 @@ class Trainer:
         y_expected = r1 + self.gamma * next_val  # y_exp = r + gamma * Q'(s2, pi'(s2))
         y_predicted = torch.squeeze(self.critic(s1, c_s1, a1))  # y_exp = Q(s1, a1)
         loss_critic = F.smooth_l1_loss(y_predicted, y_expected) #TODO: try mse?
-        # print(loss_critic)
         self.critic_optimizer.zero_grad()
         loss_critic.backward()
         #torch.nn.utils.clip_grad_norm_(self.critic.parameters(), 1.0)
@@ -105,10 +106,10 @@ class Trainer:
         # ---------- Actor ----------
         pred_a1 = self.actor(s1, c_s1)
         loss_actor = -torch.mean(self.critic(s1, c_s1, pred_a1))  # TODO: understand this with missing theory atm
-        # print(loss_actor)
         self.actor_optimizer.zero_grad()
         loss_actor.backward()
-        #torch.nn.utils.clip_grad_norm_(self.actor.parameters(), 1.0)
+        #print(self.actor.fc6.weight.grad)
+        torch.nn.utils.clip_grad_norm_(self.actor.parameters(), 1.0)
         self.actor_optimizer.step()
 
         soft_update(self.target_actor, self.actor, self.tau)
