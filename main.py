@@ -17,7 +17,7 @@ torch.cuda.empty_cache()
 BATCH_SIZE = 5
 LEARNING_RATE = 0.00001
 GAMMA = 0.999
-TAU = 0.00001
+TAU = 0.0001
 MAX_STEPS = 50000
 WIDTH = 735
 HEIGHT = 546
@@ -80,7 +80,7 @@ def get_reward(score, previous_score, acc, previous_acc, step):
 
 
 ## Training
-def train(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights=None, save_name='tests', beatmap_name=None, star=1):
+def train(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights=None, save_name='tests', beatmap_name=None, star=1, frequency=7.5):
     # Osu routine
     process, wndw = utils.osu_routines.start_osu()
     utils.osu_routines.move_to_songs(star=star)
@@ -105,6 +105,7 @@ def train(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights=None, s
         thread = None
         #logger = open('./benchmark/log.txt', 'w+')
         for step in range(MAX_STEPS):
+            step_time_prev = time.time()
             k += 1
             with torch.no_grad():
                 action = trainer.select_exploration_action(state, controls_state, i, step)
@@ -116,7 +117,7 @@ def train(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights=None, s
                 current_screen = (utils.screen.get_game_screen(trainer.screen).unsqueeze_(0).sum(1, keepdim=True)/3.0)
                 score, acc = utils.OCR.get_score_acc(trainer.screen, trainer.score_ocr, trainer.acc_ocr, wndw)
                 new_x, new_y = pyautogui.position()
-                new_controls_state = torch.cat((torch.tensor([[new_x, new_y]], dtype=torch.float32, device=device), new_controls_state), 1)
+                new_controls_state = torch.cat((torch.tensor([[new_x/WIDTH, new_y/HEIGHT]], dtype=torch.float32, device=device), new_controls_state), 1)
                 if (step < 15 and score == -1) or (score - previous_score > 5*(previous_score+100)):
                     score = previous_score
                 if step < 15 and acc == -1:
@@ -138,6 +139,7 @@ def train(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights=None, s
                 #trainer.memory.push(state, action, reward, new_state, controls_state, new_controls_state)
             if thread is not None:
                 thread.join()
+
             thread = Thread(target=trainer.optimize)
             thread.start()
             #trainer.optimize()
@@ -156,6 +158,12 @@ def train(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights=None, s
 
             if done:
                 break
+
+            step_time_curr = time.time()
+            if step_time_curr - step_time_prev < 1/frequency:
+                dt = 1/frequency - (step_time_curr - step_time_prev)
+                time.sleep(dt/1.015)
+
 
         end = time.time()
         delta_t = end - start
@@ -196,7 +204,7 @@ def train(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights=None, s
 
 
 if __name__ == '__main__':
-    weights_path = ('./weights/actorcheatreal_07-12-2020-9.pt', './weights/criticcheatreal_07-12-2020-9.pt')
-    save_name = '_bis_07-12-2020-'
-    train(8, LEARNING_RATE, save_name=save_name, load_weights=weights_path, beatmap_name="cheatreal", star=3)
+    weights_path = ('./weights/actorbongo_08-12-2020-144.pt', './weights/criticbongo_08-12-2020-144.pt')
+    save_name = '_bis_08-12-2020-'
+    train(90, LEARNING_RATE, save_name=save_name, load_weights=weights_path, beatmap_name="bongo", star=2)
 

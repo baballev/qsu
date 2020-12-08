@@ -33,8 +33,8 @@ class Actor(nn.Module):
 
         self.fc1 = nn.Linear(convh * convw, 512)
         self.fc2 = nn.Linear(512, 256)
-        self.fcc1 = nn.Linear(control_dim, 32)
-        self.fc3 = nn.Linear(256 + 32, 128)
+        self.fcc1 = nn.Linear(control_dim, 12)
+        self.fc3 = nn.Linear(256 + 12, 128)
         self.fc4 = nn.Linear(128, 64)
         self.fc5 = nn.Linear(64, 32)
         self.fc6 = nn.Linear(32, action_dim)
@@ -85,9 +85,9 @@ class Critic(nn.Module):
 
         self.fca1 = nn.Linear(self.action_dim, 32)
 
-        self.fc1 = nn.Linear(control_dim, 32)
+        self.fc1 = nn.Linear(control_dim, 12)
 
-        self.ffc1 = nn.Linear(192, 1)
+        self.ffc1 = nn.Linear(172, 1)
 
     def forward(self, state, controls_state, action):  # Compute an approximate Q(s, a) value function
         x = F.leaky_relu(self.convs1(state))

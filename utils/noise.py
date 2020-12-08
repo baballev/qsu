@@ -51,7 +51,7 @@ class NormalActionNoise(ActionNoise):
 
 # Based on http://math.stackexchange.com/questions/1287634/implementing-ornstein-uhlenbeck-in-matlab
 class OrnsteinUhlenbeckActionNoise(ActionNoise):
-    def __init__(self, mu, sigma, theta=.15, dt=torch.tensor([0.15], device=device), x0=None):
+    def __init__(self, mu, sigma, theta=.15, dt=torch.tensor([0.12], device=device), x0=None):
         self.theta = theta
         self.mu = mu
         self.sigma = sigma
