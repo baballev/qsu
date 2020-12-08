@@ -14,7 +14,7 @@ from trainer import Trainer
 
 torch.cuda.empty_cache()
 
-BATCH_SIZE = 5
+BATCH_SIZE = 7
 LEARNING_RATE = 0.00001
 GAMMA = 0.999
 TAU = 0.0001
@@ -80,7 +80,7 @@ def get_reward(score, previous_score, acc, previous_acc, step):
 
 
 ## Training
-def train(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights=None, save_name='tests', beatmap_name=None, star=1, frequency=7.5):
+def train(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights=None, save_name='tests', beatmap_name=None, star=1, frequency=8.0):
     # Osu routine
     process, wndw = utils.osu_routines.start_osu()
     utils.osu_routines.move_to_songs(star=star)
@@ -90,10 +90,10 @@ def train(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights=None, s
     episode_average_reward = 0.0
     trainer = Trainer(load_weights=load_weights, lr=learning_rate, batch_size=batch_size, tau=TAU, gamma=GAMMA)
     k = 0
-    episodes_reward = -5.0
+    episodes_reward = 0
     c = 0
     for i in range(episode_nb):
-        best = 0.0
+        #best = -5.0
         utils.osu_routines.launch_random_beatmap()
         #previous_screen = utils.screen.get_game_screen(trainer.screen).unsqueeze_(0).sum(1, keepdim=True)/3.0
         previous_score = torch.tensor(0.0, device=device)
@@ -108,7 +108,7 @@ def train(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights=None, s
             step_time_prev = time.time()
             k += 1
             with torch.no_grad():
-                action = trainer.select_exploration_action(state, controls_state, i, step)
+                action = trainer.select_exploration_action(state, controls_state, i)
                 #action = trainer.select_exploitation_action(state, controls_state)
                 #if step % 50 == 0 and step>0:
                 #    print(action)
@@ -175,8 +175,9 @@ def train(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights=None, s
         if i % 20 == 0 and i > 0:
             print('Mean reward over last 20 episodes: ')
             print(episodes_reward/c)
-            if episodes_reward/c > best:
+            '''if episodes_reward/c > best:
                 trainer(save_name + 'best', num=0)
+            '''
             c = 0
             episodes_reward = 0.0
             if beatmap_name is not None:
@@ -204,7 +205,7 @@ def train(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights=None, s
 
 
 if __name__ == '__main__':
-    weights_path = ('./weights/actorbongo_08-12-2020-144.pt', './weights/criticbongo_08-12-2020-144.pt')
-    save_name = '_bis_08-12-2020-'
-    train(90, LEARNING_RATE, save_name=save_name, load_weights=weights_path, beatmap_name="bongo", star=2)
+    weights_path = ('./weights/actorbongo_bis_08-12-2020-89.pt', './weights/criticbongo_bis_08-12-2020-89.pt')
+    save_name = '_09-12-2020-'
+    train(400, LEARNING_RATE, save_name=save_name, load_weights=None, beatmap_name="bongo", star=2)
 

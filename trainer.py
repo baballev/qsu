@@ -11,8 +11,8 @@ from memory import ReplayMemory
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-DECAY = 0.999
-
+DECAY = 0.9995
+t = 0
 
 ## IMPORTANT NOTE: THE LARGE MAJORITY of the code was taken or inspired from:
 ## https://github.com/vy007vikas/PyTorch-ActorCriticRL/
@@ -29,7 +29,7 @@ def soft_update(target, source, tau):  # y = TAU * x  +  (1 - TAU) * y
 
 class Trainer:
 
-    def __init__(self, batch_size=5, lr=0.0001, tau=0.0001, gamma=0.999, load_weights=None, width=735, height=546):
+    def __init__(self, batch_size=5, lr=0.0001, tau=0.0001, gamma=0.999, load_weights=None, width=368, height=273):
         self.batch_size = batch_size
         self.lr = lr
         self.tau = tau
@@ -49,25 +49,31 @@ class Trainer:
 
         self.noise = utils.noise.OrnsteinUhlenbeckActionNoise(mu=torch.tensor([0.0, 0.0, 0.0, 0.0], device=device), sigma=0.25, theta=0.15, x0=torch.tensor([0.0, 0.0, 0.0, 0.0], device=device))
 
-        self.actor_optimizer = torch.optim.AdamW(self.actor.parameters(), self.lr/2.0, eps=0.000001, weight_decay=0.0001)
-        self.critic_optimizer = torch.optim.AdamW(self.critic.parameters(), self.lr, eps=0.000001, weight_decay=0.0001)
+        self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), self.lr/2.0, eps=0.000001)
+        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), self.lr, eps=0.000001)
 
-        self.memory = ReplayMemory(1500)  # The larger the better because then the transitions have more chances to be uncorrelated
+        self.memory = ReplayMemory(3000)  # The larger the better because then the transitions have more chances to be uncorrelated
 
         self.screen = utils.screen.init_screen(capture_output="pytorch_float_gpu")
         self.score_ocr = utils.OCR.init_OCR('./weights/OCR/OCR_score2.pt')
         self.acc_ocr = utils.OCR.init_OCR('./weights/OCR/OCR_acc2.pt')
         self.hc = pyclick.HumanClicker()
 
-    def select_exploration_action(self, state, controls_state, episode_num=0, step_num=1):  # Check if the values are ok
+    def select_exploration_action(self, state, controls_state, episode_num=0):  # Check if the values are ok
+        global t
+        t += 1
         action = self.actor(state, controls_state).detach()
-        if step_num % 300 == 0:
+        if t % 159 == 0:
             print(action)
         new_action = action + DECAY**(episode_num +1) * self.noise.get_noise()
         return torch.clip(new_action, 0.0, 1.0)
 
     def select_exploitation_action(self, state, controls_state):
         action = self.target_actor(state, controls_state).detach()
+        global t
+        t += 1
+        if t % 50 ==0:
+            print(action)
         return action
 
     def save_model(self, file_name, num=0):
