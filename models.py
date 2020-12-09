@@ -9,41 +9,41 @@ import torchvision.transforms as transforms
 counting = 0
 
 class Actor(nn.Module):
-    def __init__(self, height=273, width=368, channels=1, action_dim=4, control_dim=4): # action dim: x, y, right_click, left_click
+    def __init__(self, height=137, width=184, channels=1, action_dim=4, control_dim=4): # action dim: x, y, right_click, left_click
         super(Actor, self).__init__()
         self.height = height
         self.width = width
         self.channels = channels
         self.action_dim = action_dim
 
-        self.conv1 = nn.Conv2d(self.channels, 6, kernel_size=9, stride=2)
+        self.conv1 = nn.Conv2d(self.channels, 16, kernel_size=7, stride=2)
         #self.bn1 = nn.BatchNorm2d(8)
-        self.conv2 = nn.Conv2d(6, 8, kernel_size=7, stride=2)
+        self.conv2 = nn.Conv2d(16, 32, kernel_size=5, stride=2)
         #self.bn2 = nn.BatchNorm2d(16)
-        self.conv3 = nn.Conv2d(8, 12, kernel_size=5, stride=2)
+        #self.conv3 = nn.Conv2d(8, 12, kernel_size=5, stride=2)
         #self.bn3 = nn.BatchNorm2d(16)
-        self.conv4 = nn.Conv2d(12, 16, kernel_size=3, stride=2)
+        #self.conv4 = nn.Conv2d(12, 16, kernel_size=3, stride=2)
         #self.bn4 = nn.BatchNorm2d(8)
 
         def conv2d_size_out(size, kernel_size=5, stride=2):
             return (size - (kernel_size - 1) - 1) // stride + 1
 
-        convw = conv2d_size_out(conv2d_size_out(conv2d_size_out(conv2d_size_out(width, kernel_size=9), kernel_size=7)), kernel_size=3)
-        convh = conv2d_size_out(conv2d_size_out(conv2d_size_out(conv2d_size_out(height, kernel_size=9), kernel_size=7)), kernel_size=3)
+        convw = conv2d_size_out(conv2d_size_out(width, kernel_size=7), kernel_size=5)
+        convh = conv2d_size_out(conv2d_size_out(height, kernel_size=7), kernel_size=5)
 
-        self.fc1 = nn.Linear(convh * convw * 16, 512)
-        self.fc2 = nn.Linear(512, 256)
+        self.fc1 = nn.Linear(convh * convw * 32, 1024)
+        self.fc2 = nn.Linear(1024, 512)
         self.fcc1 = nn.Linear(control_dim, 12)
-        self.fc3 = nn.Linear(256 + 12, 128)
-        self.fc4 = nn.Linear(128, 64)
-        self.fc5 = nn.Linear(64, 32)
-        self.fc6 = nn.Linear(32, action_dim)
+        self.fc3 = nn.Linear(512 + 12, 256)
+        self.fc4 = nn.Linear(256, 128)
+        self.fc5 = nn.Linear(128, 64)
+        self.fc6 = nn.Linear(64, action_dim)
 
     def forward(self, state, controls_state):
         global counting
         x = F.leaky_relu(self.conv1(state))
         x = F.leaky_relu(self.conv2(x))
-        x = F.leaky_relu(self.conv3(x))
+        #x = F.leaky_relu(self.conv3(x))
         '''
         if counting > 150:
             transforms.ToPILImage()(state[0]).save('truc_state.' + str(counting) + '.png')
@@ -51,9 +51,9 @@ class Actor(nn.Module):
             transforms.ToPILImage()(x[0, 4, :, :]).save('truc_1.' + str(counting) + '.png')
             transforms.ToPILImage()(x[0, 2, :, :]).save('truc_2.' + str(counting) + '.png')
         '''
-        x = F.leaky_relu(self.conv4(x))
+        #x = F.leaky_relu(self.conv4(x))
         #transforms.ToPILImage()(state[0]).save(str(counting) + '.png')
-        #transforms.ToPILImage()(x[0, 0, :, :]).save('truc_' + str(counting) + '.png')
+        #transforms.ToPILImage()(x[0, 0, :, :]).save('truc_0_' + str(counting) + '.png')
         #counting += 1
         x = x.view(x.size(0), -1)
         x = F.leaky_relu(self.fc1(x))
@@ -68,7 +68,7 @@ class Actor(nn.Module):
 
 
 class Critic(nn.Module):
-    def __init__(self, height=273, width=368, channels=1, action_dim=4, control_dim=4):
+    def __init__(self, height=137, width=184, channels=1, action_dim=4, control_dim=4):
         super(Critic, self).__init__()
 
         self.width = width
@@ -76,35 +76,35 @@ class Critic(nn.Module):
         self.channels = channels
         self.action_dim = action_dim
 
-        self.convs1 = nn.Conv2d(self.channels, 6, kernel_size=9, stride=2)
+        self.convs1 = nn.Conv2d(self.channels, 16, kernel_size=7, stride=2)
         #self.bns1 = nn.BatchNorm2d(8)
-        self.convs2 = nn.Conv2d(6, 8, kernel_size=7, stride=2)
+        self.convs2 = nn.Conv2d(16, 32, kernel_size=5, stride=2)
         #self.bns2 = nn.BatchNorm2d(16)
-        self.convs3 = nn.Conv2d(8, 12, kernel_size=5, stride=2)
+        #self.convs3 = nn.Conv2d(8, 12, kernel_size=5, stride=2)
         #self.bns3 = nn.BatchNorm2d(16)
-        self.convs4 = nn.Conv2d(12, 16, kernel_size=3, stride=2)
+        #self.convs4 = nn.Conv2d(12, 16, kernel_size=3, stride=2)
         #self.bns4 = nn.BatchNorm2d(8)
 
         def conv2d_size_out(size, kernel_size=5, stride=2):
             return (size - (kernel_size - 1) - 1) // stride + 1
 
-        convw = conv2d_size_out(conv2d_size_out(conv2d_size_out(conv2d_size_out(width, kernel_size=9), kernel_size=7)), kernel_size=3)
-        convh = conv2d_size_out(conv2d_size_out(conv2d_size_out(conv2d_size_out(height, kernel_size=9), kernel_size=7)), kernel_size=3)
+        convw = conv2d_size_out(conv2d_size_out(width, kernel_size=7), kernel_size=5)
+        convh = conv2d_size_out(conv2d_size_out(height, kernel_size=7), kernel_size=5)
 
-        self.fcs4 = nn.Linear(convh * convw * 16, 256)
-        self.fcs5 = nn.Linear(256, 128)
+        self.fcs4 = nn.Linear(convh * convw * 32, 512)
+        self.fcs5 = nn.Linear(512, 256)
 
         self.fca1 = nn.Linear(self.action_dim, 32)
 
         self.fc1 = nn.Linear(control_dim, 12)
 
-        self.ffc1 = nn.Linear(172, 1)
+        self.ffc1 = nn.Linear(256+32+12, 1)
 
     def forward(self, state, controls_state, action):  # Compute an approximate Q(s, a) value function
         x = F.leaky_relu(self.convs1(state))
         x = F.leaky_relu(self.convs2(x))
-        x = F.leaky_relu(self.convs3(x))
-        x = F.leaky_relu(self.convs4(x))
+        #x = F.leaky_relu(self.convs3(x))
+        #x = F.leaky_relu(self.convs4(x))
         x = x.view(x.size(0), -1)
         x = F.leaky_relu(self.fcs4(x))
         x = F.leaky_relu(self.fcs5(x))

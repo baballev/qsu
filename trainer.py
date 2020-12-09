@@ -47,10 +47,10 @@ class Trainer:
             hard_copy(self.target_actor, self.actor)
             hard_copy(self.target_critic, self.critic)
 
-        self.noise = utils.noise.OrnsteinUhlenbeckActionNoise(mu=torch.tensor([0.0, 0.0, 0.0, 0.0], device=device), sigma=0.25, theta=0.15, x0=torch.tensor([0.0, 0.0, 0.0, 0.0], device=device))
+        self.noise = utils.noise.OrnsteinUhlenbeckActionNoise(mu=torch.tensor([0.0, 0.0, 0.0, 0.0], device=device), sigma=0.25, theta=0.25, x0=torch.tensor([0.0, 0.0, 0.0, 0.0], device=device))
 
-        self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), self.lr/2.0, eps=0.000001)
-        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), self.lr, eps=0.000001)
+        self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), self.lr/2.0, eps=0.0000001)
+        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), self.lr, eps=0.0000001)
 
         self.memory = ReplayMemory(3000)  # The larger the better because then the transitions have more chances to be uncorrelated
 
@@ -103,10 +103,10 @@ class Trainer:
         next_val = torch.squeeze(self.target_critic(s2, c_s2, a2).detach())  # (5, 1) -> (5)
         y_expected = r1 + self.gamma * next_val  # y_exp = r + gamma * Q'(s2, pi'(s2))
         y_predicted = torch.squeeze(self.critic(s1, c_s1, a1))  # y_exp = Q(s1, a1)
-        loss_critic = F.smooth_l1_loss(y_predicted, y_expected) #TODO: try mse?
+        loss_critic = F.smooth_l1_loss(y_predicted, y_expected)  # TODO: try mse?
         self.critic_optimizer.zero_grad()
         loss_critic.backward()
-        torch.nn.utils.clip_grad_value_(self.critic.parameters(), 0.01)
+        torch.nn.utils.clip_grad_value_(self.critic.parameters(), 0.1)
         self.critic_optimizer.step()
 
         # ---------- Actor ----------
@@ -115,7 +115,7 @@ class Trainer:
         self.actor_optimizer.zero_grad()
         loss_actor.backward()
         #print(self.actor.fc6.weight.grad)
-        torch.nn.utils.clip_grad_value_(self.actor.parameters(), 0.01)
+        torch.nn.utils.clip_grad_value_(self.actor.parameters(), 0.1)
         self.actor_optimizer.step()
 
         soft_update(self.target_actor, self.actor, self.tau)

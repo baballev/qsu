@@ -19,12 +19,10 @@ LEARNING_RATE = 0.00001
 GAMMA = 0.999
 TAU = 0.0001
 MAX_STEPS = 50000
-WIDTH = 735
+WIDTH = 735 # TODO: change these values maybe
 HEIGHT = 546
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-torch.autograd.set_detect_anomaly(True)
 
 ## IMPORTANT NOTE: THE LARGE MAJORITY of the code was taken or inspired from:
 ## https://github.com/vy007vikas/PyTorch-ActorCriticRL/
@@ -101,6 +99,7 @@ def train(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights=None, s
         controls_state = torch.tensor([[0.5, 0.5, 0.0, 0.0]], device=device)
         current_screen = utils.screen.get_game_screen(trainer.screen).unsqueeze_(0).sum(1, keepdim=True)/3.0
         state = current_screen #- previous_screen
+        print(state.shape)
         start = time.time()
         thread = None
         #logger = open('./benchmark/log.txt', 'w+')
@@ -108,10 +107,8 @@ def train(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights=None, s
             step_time_prev = time.time()
             k += 1
             with torch.no_grad():
-                action = trainer.select_exploration_action(state, controls_state, i)
-                #action = trainer.select_exploitation_action(state, controls_state)
-                #if step % 50 == 0 and step>0:
-                #    print(action)
+                #action = trainer.select_exploration_action(state, controls_state, i)
+                action = trainer.select_exploitation_action(state, controls_state)
                 new_controls_state = perform_action(action, trainer.hc)
                 #previous_screen = current_screen
                 current_screen = (utils.screen.get_game_screen(trainer.screen).unsqueeze_(0).sum(1, keepdim=True)/3.0)
@@ -135,14 +132,14 @@ def train(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights=None, s
                     #    logger.write(str(step) + '___' + str(t.item()) + '___' + str(controls_state) + '___' + str(action) + '\n')
                     th = Thread(target=trainer.memory.push, args=(state, action, reward, new_state, controls_state, new_controls_state))
                     th.start()
+                    #trainer.memory.push(state, action, reward, new_state, controls_state, new_controls_state)
 
-                #trainer.memory.push(state, action, reward, new_state, controls_state, new_controls_state)
             if thread is not None:
                 thread.join()
-
             thread = Thread(target=trainer.optimize)
             thread.start()
             #trainer.optimize()
+
             previous_score = score
             previous_acc = acc
             state = new_state
@@ -205,7 +202,7 @@ def train(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights=None, s
 
 
 if __name__ == '__main__':
-    weights_path = ('./weights/actorbongo_bis_08-12-2020-89.pt', './weights/criticbongo_bis_08-12-2020-89.pt')
+    weights_path = ('./weights/actorbongo_09-12-2020-200.pt', './weights/criticbongo_09-12-2020-200.pt')
     save_name = '_09-12-2020-'
-    train(400, LEARNING_RATE, save_name=save_name, load_weights=None, beatmap_name="bongo", star=2)
+    train(3, LEARNING_RATE, save_name=save_name, load_weights=None, beatmap_name="bongo", star=2)
 
