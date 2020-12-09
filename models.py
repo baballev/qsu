@@ -131,30 +131,33 @@ class QNetwork(nn.Module):
         self.channels = channels
         self.action_dim = action_dim
 
-        self.conv1 = nn.Conv2d(self.channels, 8, kernel_size=7, stride=2)
-        self.conv2 = nn.Conv2d(8, 16, kernel_size=5, stride=2)
-        self.conv3 = nn.Conv2d(16, 32, kernel_size=5, stride=2)
+        self.conv1 = nn.Conv2d(self.channels, 16, kernel_size=7, stride=2)
+        self.conv2 = nn.Conv2d(16, 32, kernel_size=5, stride=2)
 
         def conv2d_size_out(size, kernel_size=5, stride=2):
             return (size - (kernel_size - 1) - 1) // stride + 1
 
-        convw = conv2d_size_out(conv2d_size_out(conv2d_size_out(width, kernel_size=7)))
-        convh = conv2d_size_out(conv2d_size_out(conv2d_size_out(height, kernel_size=7)))
+        convw = conv2d_size_out(conv2d_size_out(width, kernel_size=7))
+        convh = conv2d_size_out(conv2d_size_out(height, kernel_size=7))
 
-        self.fc3 = nn.Linear(convh * convw * 32, 720)
-
+        self.fc3 = nn.Linear(convh * convw * 32, 2048)
         self.fcc3 = nn.Linear(control_dim, 64)
-        self.fc4 = nn.Linear(720+64, 128)
-        self.fc5 = nn.Linear(128, action_dim)
+        self.fc4 = nn.Linear(2048+64, 512)
+        self.fc5 = nn.Linear(512, 256)
+        self.fc6 = nn.Linear(256, 256)
+        self.fc7 = nn.Linear(256, 1024)
+        self.fc8 = nn.Linear(1024, action_dim)
 
     def forward(self, state, control_state):
         x = F.leaky_relu(self.conv1(state))
         x = F.leaky_relu(self.conv2(x))
-        x = F.leaky_relu(self.conv3(x))
         x = x.view(x.size(0), -1)
         x = F.leaky_relu(self.fc3(x))
         y = F.leaky_relu(self.fcc3(control_state))
         y = torch.cat((x, y), dim=1)
         y = F.leaky_relu(self.fc4(y))
-        y = self.fc5(y)
+        y = F.leaky_relu(self.fc5(y))
+        y = F.leaky_relu(self.fc6(y))
+        y = F.leaky_relu(self.fc7(y))
+        y = self.fc8(y)
         return y

@@ -130,8 +130,8 @@ class QTrainer:
         self.lr = lr
         self.gamma = gamma
 
-        self.q_network = models.QNetwork(action_dim=discrete_width * discrete_height * 3).to(device)
-        self.target_q_network = models.QNetwork(action_dim=discrete_width * discrete_height * 3).to(device)
+        self.q_network = models.QNetwork(action_dim=discrete_width * discrete_height * 4).to(device)
+        self.target_q_network = models.QNetwork(action_dim=discrete_width * discrete_height * 4).to(device)
         print(self.q_network)
         if load_weights is not None:
             self.load_models(load_weights)

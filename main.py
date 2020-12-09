@@ -15,7 +15,7 @@ from trainer import Trainer, QTrainer
 torch.cuda.empty_cache()
 torch.set_printoptions(sci_mode=False)
 
-BATCH_SIZE = 5
+BATCH_SIZE = 10
 LEARNING_RATE = 0.00001
 GAMMA = 0.999
 TAU = 0.0001
@@ -28,7 +28,7 @@ EPS_END = 0.2
 EPS_DECAY = 20000 #TODO tune this
 TARGET_UPDATE = 5
 
-DISCRETE_FACTOR = 15
+DISCRETE_FACTOR = 8
 X_DISCRETE = 685//DISCRETE_FACTOR + 1
 Y_DISCRETE = (560-54)//DISCRETE_FACTOR + 1
 
@@ -211,7 +211,7 @@ def trainDDPG(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights=Non
     utils.osu_routines.stop_osu(process)
 
 
-def perform_discrete_action(action, human_clicker):
+def perform_discrete_action(action, human_clicker, thread):
     click, xy = divmod(action.item(), X_DISCRETE*Y_DISCRETE)
     x_disc, y_disc = divmod(xy, X_DISCRETE)
     if click == 0:
@@ -233,14 +233,17 @@ def perform_discrete_action(action, human_clicker):
     x = x_disc * DISCRETE_FACTOR + 145
     y = y_disc * DISCRETE_FACTOR + 54 + 26
 
-    threaded_mouse_move(x, y, 0.1, human_clicker=human_clicker)
-    return torch.tensor([[left, right]], device=device)
+    th = Thread(target=threaded_mouse_move, args=(x, y, 0.09, human_clicker))
+    if thread is not None:
+        thread.join()
+    th.start()
+    return torch.tensor([[left, right]], device=device), th
 
 
 training_steps = 0
 
 
-def trainQNetwork(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights=None, save_name='tests', beatmap_name=None, star=1, frequency=9.0, eval=False):
+def trainQNetwork(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights=None, save_name='tests', beatmap_name=None, star=1, frequency=10.0, eval=False):
     global training_steps
     print('Discretized x: ' + str(X_DISCRETE))
     print('Discretized y: ' + str(Y_DISCRETE))
@@ -270,9 +273,11 @@ def trainQNetwork(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights
         state = utils.screen.get_game_screen(q_trainer.screen).unsqueeze_(0).sum(1, keepdim=True) / 3.0
 
         thread = None
+        th = None
         start = time.time()
         for step in range(MAX_STEPS):
             k += 1
+            step_time_prev = time.time()
             with torch.no_grad():
                 if eval:  # Choose greedy policy if tests
                     action = q_trainer.select_action(state, controls_state)
@@ -284,9 +289,9 @@ def trainQNetwork(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights
                         action = q_trainer.select_action(state, controls_state)
                     else:
                         x = q_trainer.noise()  # Normal distribution mean=0.5, clipped in [0, 1[
-                        action = torch.tensor([int(x[0] * X_DISCRETE) + X_DISCRETE * int(x[1]*Y_DISCRETE) + X_DISCRETE*Y_DISCRETE*int(x[2]*3)], device=device)
+                        action = torch.tensor([int(x[0] * X_DISCRETE) + X_DISCRETE * int(x[1]*Y_DISCRETE) + X_DISCRETE*Y_DISCRETE*int(x[2]*4)], device=device)
 
-                new_controls_state = perform_discrete_action(action, q_trainer.hc)
+                new_controls_state, th = perform_discrete_action(action, q_trainer.hc, th)
                 new_state = utils.screen.get_game_screen(q_trainer.screen).unsqueeze_(0).sum(1, keepdim=True)/3.0
                 score, acc = utils.OCR.get_score_acc(q_trainer.screen, q_trainer.score_ocr, q_trainer.acc_ocr, wndw)
 
@@ -330,7 +335,10 @@ def trainQNetwork(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights
             if done:
                 break
 
-            # TODO: FREQUENCY CAP
+            step_time_curr = time.time()
+            if step_time_curr - step_time_prev < 1/frequency:
+                dt = 1/frequency - (step_time_curr - step_time_prev)
+                time.sleep(dt/1.15)
 
         end = time.time()
         delta_t = end - start
