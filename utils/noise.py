@@ -45,7 +45,7 @@ class NormalActionNoise(ActionNoise):
         self.max_val = max_val
 
     def __call__(self):
-        return torch.clamp(torch.normal(self.mu, self.sigma).to(device), self.min_val, self.max_val)
+        return torch.clamp(self.sigma * torch.randn(3).to(device) + self.mu, self.min_val, self.max_val)
 
     def __repr__(self):
         return 'NormalActionNoise(mu={}, sigma={})'.format(self.mu, self.sigma)

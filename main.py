@@ -283,10 +283,8 @@ def trainQNetwork(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights
                     if sample > eps_threshold:
                         action = q_trainer.select_action(state, controls_state)
                     else:
-                        x = q_trainer.noise()  # Normal distribution mean=0.5, clipped in [0, 1]
-                        y = q_trainer.noise()
-                        click = q_trainer.noise()
-                        action = torch.tensor([int(x * X_DISCRETE) + X_DISCRETE * int(y*Y_DISCRETE) + X_DISCRETE*Y_DISCRETE*int(click*3)], device=device)
+                        x = q_trainer.noise()  # Normal distribution mean=0.5, clipped in [0, 1[
+                        action = torch.tensor([int(x[0] * X_DISCRETE) + X_DISCRETE * int(x[1]*Y_DISCRETE) + X_DISCRETE*Y_DISCRETE*int(x[2]*3)], device=device)
 
                 new_controls_state = perform_discrete_action(action, q_trainer.hc)
                 new_state = utils.screen.get_game_screen(q_trainer.screen).unsqueeze_(0).sum(1, keepdim=True)/3.0
