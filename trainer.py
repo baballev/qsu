@@ -12,11 +12,12 @@ from memory import ReplayMemory
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 DECAY = 0.9995
-t = 0
 
 ## IMPORTANT NOTE: THE LARGE MAJORITY of the code was taken or inspired from:
 ## https://github.com/vy007vikas/PyTorch-ActorCriticRL/
 ## All credits go to vy007vikas for the nice Pytorch continuous action actor-critic DDPG she/he/they made.
+
+
 def hard_copy(target, source):
     for target_param, param in zip(target.parameters(), source.parameters()):
         target_param.data.copy_(param.data)
@@ -49,8 +50,8 @@ class Trainer:
 
         self.noise = utils.noise.OrnsteinUhlenbeckActionNoise(mu=torch.tensor([0.0, 0.0, 0.0, 0.0], device=device), sigma=0.25, theta=0.25, x0=torch.tensor([0.0, 0.0, 0.0, 0.0], device=device))
 
-        self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), self.lr/2.0, eps=0.0000001)
-        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), self.lr, eps=0.0000001)
+        self.actor_optimizer = torch.optim.AdamW(self.actor.parameters(), self.lr/10.0, eps=0.00001)
+        self.critic_optimizer = torch.optim.AdamW(self.critic.parameters(), self.lr, eps=0.00001, weight_decay=0.0001)
 
         self.memory = ReplayMemory(3000)  # The larger the better because then the transitions have more chances to be uncorrelated
 
@@ -72,7 +73,7 @@ class Trainer:
         action = self.target_actor(state, controls_state).detach()
         global t
         t += 1
-        if t % 50 ==0:
+        if t % 50 == 0:
             print(action)
         return action
 
@@ -106,7 +107,7 @@ class Trainer:
         loss_critic = F.smooth_l1_loss(y_predicted, y_expected)  # TODO: try mse?
         self.critic_optimizer.zero_grad()
         loss_critic.backward()
-        torch.nn.utils.clip_grad_value_(self.critic.parameters(), 0.1)
+        torch.nn.utils.clip_grad_value_(self.critic.parameters(), 0.01)
         self.critic_optimizer.step()
 
         # ---------- Actor ----------
@@ -115,11 +116,66 @@ class Trainer:
         self.actor_optimizer.zero_grad()
         loss_actor.backward()
         #print(self.actor.fc6.weight.grad)
-        torch.nn.utils.clip_grad_value_(self.actor.parameters(), 0.1)
+        torch.nn.utils.clip_grad_value_(self.actor.parameters(), 0.01)
         self.actor_optimizer.step()
 
         soft_update(self.target_actor, self.actor, self.tau)
         soft_update(self.target_critic, self.critic, self.tau)
+
+
+class QTrainer:
+
+    def __init__(self, batch_size=5, lr=0.0001, gamma=0.999, load_weights=None, discrete_height=34, discrete_width=46):
+        self.batch_size = batch_size
+        self.lr = lr
+        self.gamma = gamma
+
+        self.q_network = models.QNetwork(action_dim=discrete_width * discrete_height * 3).to(device)
+        self.target_q_network = models.QNetwork(action_dim=discrete_width * discrete_height * 3).to(device)
+        print(self.q_network)
+        if load_weights is not None:
+            self.load_models(load_weights)
+        self.optimizer = torch.optim.Adam(self.q_network.parameters(), self.lr)
+
+        self.memory = ReplayMemory(3000)
+        self.screen = utils.screen.init_screen(capture_output="pytorch_float_gpu")
+        self.score_ocr = utils.OCR.init_OCR('./weights/OCR/OCR_score2.pt')
+        self.acc_ocr = utils.OCR.init_OCR('./weights/OCR/OCR_acc2.pt')
+        self.hc = pyclick.HumanClicker()
+        self.noise = utils.noise.NormalActionNoise(mu=torch.tensor(0.5, device=device), sigma=torch.tensor(0.2, device=device), min_val=0.0, max_val=0.999)
+
+    def select_action(self, state, controls_state):  # Greedy policy
+        action = self.q_network(state, controls_state).detach()
+        _, action = torch.max(action, 1)
+        return action
+
+    def save_model(self, file_name, num=0):
+        torch.save(self.q_network.state_dict(), './weights/q_net_' + file_name + str(num) + '.pt')
+        print('Model saved to : ' + './weights/q_net_' + file_name + str(num) + '.pt')
+
+    def load_models(self, weights_path):
+        self.q_network.load_state_dict(torch.load(weights_path))
+        print('Loaded actor weights from: ' + weights_path)
+        hard_copy(self.target_q_network, self.q_network)
+
+    def optimize(self):
+        if len(self.memory) < self.batch_size:
+            time.sleep(0.01)
+            return
+        s1, a1, r1, s2, c_s1, c_s2 = self.memory.sample(self.batch_size)
+        s = self.q_network(s1, c_s1)
+        state_action_values = torch.stack([s[i, a1[i]] for i in range(self.batch_size)])  # Get estimated Q(s1,a1)
+        next_state_values = self.target_q_network(s2, c_s2).max(1)[0].detach()
+        expected_state_action_values = r1 + self.gamma * next_state_values
+        loss = F.smooth_l1_loss(state_action_values, expected_state_action_values)
+
+        self.optimizer.zero_grad()
+        loss.backward()
+
+        for param in self.q_network.parameters():  # Todo: Benchmark to see whether this is faster than value_clip
+            param.grad.data.clamp_(-0.1, 0.1)
+
+        self.optimizer.step()
 
 
 if __name__ == '__main__':

@@ -38,12 +38,14 @@ class ActionNoise(object):
 
 
 class NormalActionNoise(ActionNoise):
-    def __init__(self, mu, sigma):
+    def __init__(self, mu, sigma, min_val, max_val):
         self.mu = mu
         self.sigma = sigma
+        self.min_val = min_val
+        self.max_val = max_val
 
     def __call__(self):
-        return torch.normal(self.mu, self.sigma)
+        return torch.clamp(torch.normal(self.mu, self.sigma).to(device), self.min_val, self.max_val)
 
     def __repr__(self):
         return 'NormalActionNoise(mu={}, sigma={})'.format(self.mu, self.sigma)

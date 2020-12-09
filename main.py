@@ -1,26 +1,38 @@
+import math
+from random import random
 import torch
 import time
 import pyautogui
 import gc
-import pyclick
-import torchvision
 from threading import Thread
 
 import utils.screen
 import utils.osu_routines
 import utils.OCR
 import utils.noise
-from trainer import Trainer
+from trainer import Trainer, QTrainer
 
 torch.cuda.empty_cache()
+torch.set_printoptions(sci_mode=False)
 
-BATCH_SIZE = 7
+BATCH_SIZE = 5
 LEARNING_RATE = 0.00001
 GAMMA = 0.999
 TAU = 0.0001
-MAX_STEPS = 50000
-WIDTH = 735 # TODO: change these values maybe
+MAX_STEPS = 25000
+WIDTH = 735
 HEIGHT = 546
+
+EPS_START = 0.9
+EPS_END = 0.2
+EPS_DECAY = 20000 #TODO tune this
+TARGET_UPDATE = 5
+
+DISCRETE_FACTOR = 15
+X_DISCRETE = 685//DISCRETE_FACTOR + 1
+Y_DISCRETE = (560-54)//DISCRETE_FACTOR + 1
+
+
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -50,16 +62,16 @@ def perform_action(action, human_clicker):
         pyautogui.mouseUp(button='right')
         right = 0.0
     if y*HEIGHT < 54:
-        thread = Thread(target=threaded_mouse_move, args=(min(int(x*WIDTH)+145, 830), 54+26, 0.09, human_clicker))
+        thread = Thread(target=threaded_mouse_move, args=(min(int(x*WIDTH)+145, 830), 54+26, 0.08, human_clicker))
         thread.start()
     elif y*HEIGHT > 560:
-        thread = Thread(target=threaded_mouse_move, args=(min(int(x*WIDTH)+145, 830), 560+26, 0.09, human_clicker))
+        thread = Thread(target=threaded_mouse_move, args=(min(int(x*WIDTH)+145, 830), 560+26, 0.08, human_clicker))
         thread.start()
     elif x*WIDTH > 685:
-        thread = Thread(target=threaded_mouse_move, args=(685+145, int(y*HEIGHT)+26, 0.09, human_clicker))
+        thread = Thread(target=threaded_mouse_move, args=(685+145, int(y*HEIGHT)+26, 0.08, human_clicker))
         thread.start()
     else:
-        thread = Thread(target=threaded_mouse_move, args=(max(int(x*WIDTH)+145, 145), int(y*HEIGHT)+26, 0.09, human_clicker))
+        thread = Thread(target=threaded_mouse_move, args=(max(int(x*WIDTH)+145, 145), int(y*HEIGHT)+26, 0.08, human_clicker))
         thread.start()
     return torch.tensor([[left, right]], device=device)
 
@@ -78,18 +90,18 @@ def get_reward(score, previous_score, acc, previous_acc, step):
 
 
 ## Training
-def train(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights=None, save_name='tests', beatmap_name=None, star=1, frequency=8.0):
+def trainDDPG(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights=None, save_name='tests', beatmap_name=None, star=1, frequency=9.0):
     # Osu routine
     process, wndw = utils.osu_routines.start_osu()
     utils.osu_routines.move_to_songs(star=star)
     if beatmap_name is not None:
         utils.osu_routines.select_beatmap(beatmap_name)
     utils.osu_routines.enable_nofail()
-    episode_average_reward = 0.0
     trainer = Trainer(load_weights=load_weights, lr=learning_rate, batch_size=batch_size, tau=TAU, gamma=GAMMA)
-    k = 0
     episodes_reward = 0
+    episode_average_reward = 0.0
     c = 0
+    k = 0
     for i in range(episode_nb):
         #best = -5.0
         utils.osu_routines.launch_random_beatmap()
@@ -99,7 +111,6 @@ def train(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights=None, s
         controls_state = torch.tensor([[0.5, 0.5, 0.0, 0.0]], device=device)
         current_screen = utils.screen.get_game_screen(trainer.screen).unsqueeze_(0).sum(1, keepdim=True)/3.0
         state = current_screen #- previous_screen
-        print(state.shape)
         start = time.time()
         thread = None
         #logger = open('./benchmark/log.txt', 'w+')
@@ -107,8 +118,8 @@ def train(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights=None, s
             step_time_prev = time.time()
             k += 1
             with torch.no_grad():
-                #action = trainer.select_exploration_action(state, controls_state, i)
-                action = trainer.select_exploitation_action(state, controls_state)
+                action = trainer.select_exploration_action(state, controls_state, i)
+                #action = trainer.select_exploitation_action(state, controls_state)
                 new_controls_state = perform_action(action, trainer.hc)
                 #previous_screen = current_screen
                 current_screen = (utils.screen.get_game_screen(trainer.screen).unsqueeze_(0).sum(1, keepdim=True)/3.0)
@@ -161,7 +172,6 @@ def train(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights=None, s
                 dt = 1/frequency - (step_time_curr - step_time_prev)
                 time.sleep(dt/1.015)
 
-
         end = time.time()
         delta_t = end - start
         #logger.close()
@@ -201,8 +211,173 @@ def train(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights=None, s
     utils.osu_routines.stop_osu(process)
 
 
+def perform_discrete_action(action, human_clicker):
+    click, xy = divmod(action.item(), X_DISCRETE*Y_DISCRETE)
+    x_disc, y_disc = divmod(xy, X_DISCRETE)
+    if click == 0:
+        pyautogui.mouseUp(button="left")
+        pyautogui.mouseUp(button="right")
+        left, right = 0.0, 0.0
+    elif click == 1:
+        pyautogui.mouseDown(button="left")
+        pyautogui.mouseUp(button="right")
+        left, right = 1.0, 0.0
+    elif click == 2:
+        pyautogui.mouseUp(button="left")
+        pyautogui.mouseDown(button="right")
+        left, right = 0.0, 1.0
+    else:  # ToDo: I could use this to make a delayed click instead?
+        pyautogui.mouseDown(button="left")
+        pyautogui.mouseDown(button="right")
+        left, right = 1.0, 1.0
+    x = x_disc * DISCRETE_FACTOR + 145
+    y = y_disc * DISCRETE_FACTOR + 54 + 26
+
+    threaded_mouse_move(x, y, 0.1, human_clicker=human_clicker)
+    return torch.tensor([[left, right]], device=device)
+
+
+training_steps = 0
+
+
+def trainQNetwork(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights=None, save_name='tests', beatmap_name=None, star=1, frequency=9.0, eval=False):
+    global training_steps
+    print('Discretized x: ' + str(X_DISCRETE))
+    print('Discretized y: ' + str(Y_DISCRETE))
+    print('Action dim: ' + str(X_DISCRETE*Y_DISCRETE*4))
+    print('X_MAX = ' + str(145 + (X_DISCRETE - 1)*DISCRETE_FACTOR))
+    print('YMAX = ' + str(54 + 26 + (Y_DISCRETE - 1)*DISCRETE_FACTOR))
+
+    # Osu routine
+    process, wndw = utils.osu_routines.start_osu()
+    utils.osu_routines.move_to_songs(star=star)
+    if beatmap_name is not None:
+        utils.osu_routines.select_beatmap(beatmap_name)
+    utils.osu_routines.enable_nofail()
+
+    q_trainer = QTrainer(batch_size=batch_size, lr=learning_rate, discrete_height=Y_DISCRETE, discrete_width=X_DISCRETE, load_weights=load_weights)
+
+    episodes_reward = 0.0
+    episode_average_reward = 0.0
+    c = 0
+    k = 0
+    for i in range(episode_nb):
+        utils.osu_routines.launch_random_beatmap()
+        time.sleep(0.5)
+        previous_score = torch.tensor(0.0, device=device)
+        previous_acc = torch.tensor(100.0, device=device)
+        controls_state = torch.tensor([[0.5, 0.5, 0.0, 0.0]], device=device)
+        state = utils.screen.get_game_screen(q_trainer.screen).unsqueeze_(0).sum(1, keepdim=True) / 3.0
+
+        thread = None
+        start = time.time()
+        for step in range(MAX_STEPS):
+            k += 1
+            with torch.no_grad():
+                if eval:  # Choose greedy policy if tests
+                    action = q_trainer.select_action(state, controls_state)
+                else:  # Else choose an epsilon greedy policy with decaying epsilon
+                    sample = random()
+                    eps_threshold = EPS_END + (EPS_START - EPS_END) * math.exp(-1. * training_steps / EPS_DECAY)
+                    training_steps += 1
+                    if sample > eps_threshold:
+                        action = q_trainer.select_action(state, controls_state)
+                    else:
+                        x = q_trainer.noise()  # Normal distribution mean=0.5, clipped in [0, 1]
+                        y = q_trainer.noise()
+                        click = q_trainer.noise()
+                        action = torch.tensor([int(x * X_DISCRETE) + X_DISCRETE * int(y*Y_DISCRETE) + X_DISCRETE*Y_DISCRETE*int(click*3)], device=device)
+
+                new_controls_state = perform_discrete_action(action, q_trainer.hc)
+                new_state = utils.screen.get_game_screen(q_trainer.screen).unsqueeze_(0).sum(1, keepdim=True)/3.0
+                score, acc = utils.OCR.get_score_acc(q_trainer.screen, q_trainer.score_ocr, q_trainer.acc_ocr, wndw)
+
+                # ToDo: Maybe unit test these two lines.
+                new_x, new_y = pyautogui.position()
+                new_controls_state = torch.cat((torch.tensor([[new_x/WIDTH, new_y/HEIGHT]], device=device), new_controls_state), 1)
+
+                if (step < 15 and score == -1) or (score - previous_score > 5*(previous_score+100)):
+                    score = previous_score
+                if step < 15 and acc == -1:
+                    acc = previous_acc
+                reward = get_reward(score, previous_score, acc, previous_acc, step)
+                done = (score == -1)
+                if done:
+                    new_state = None
+                else:
+                    #t = torch.squeeze(trainer.critic(state, controls_state, action))
+                    #print(t)
+                    th = Thread(target=q_trainer.memory.push, args=(state, action, reward, new_state, controls_state, new_controls_state))
+                    th.start()
+
+            if thread is not None:
+                thread.join()
+            thread = Thread(target=q_trainer.optimize)
+            thread.start()
+
+            previous_score = score
+            previous_acc = acc
+            state = new_state
+            controls_state = new_controls_state
+
+            episode_average_reward += reward
+            if k % 1000 == 0:
+                print('Reward average over last 1000 steps: ')
+                tmp = episode_average_reward/1000
+                print(tmp)
+                episodes_reward += tmp
+                c += 1
+                episode_average_reward = 0.0
+
+            if done:
+                break
+
+            # TODO: FREQUENCY CAP
+
+        end = time.time()
+        delta_t = end - start
+        print(str(step) + ' time steps in ' + str(delta_t) + ' s.')
+        print(str(step / delta_t) + ' time_steps per second.')
+
+        gc.collect()
+
+        if i % TARGET_UPDATE == 0:
+            q_trainer.target_q_network.load_state_dict(q_trainer.q_network.state_dict())
+
+        if i % 20 == 0 and i > 0:
+            print('Mean reward over last 20 episodes: ')
+            print(episodes_reward / c)
+
+            c = 0
+            episodes_reward = 0.0
+            if beatmap_name is not None:
+                tmp = beatmap_name + save_name
+            else:
+                tmp = save_name
+            q_trainer.save_model(tmp, num=i)
+
+        # trainer.noise.reset()
+
+        utils.osu_routines.return_to_beatmap()
+        pyautogui.mouseUp(button='right')
+        pyautogui.mouseUp(button='left')
+
+    if (episode_nb - 1) % 15 != 0:
+        print('Mean reward over last episodes: ')
+        print(episodes_reward / c)
+        if beatmap_name is not None:
+            tmp = beatmap_name + save_name
+        else:
+            tmp = save_name
+        q_trainer.save_model(tmp, num=episode_nb - 1)
+
+    q_trainer.screen.stop()
+    utils.osu_routines.stop_osu(process)
+
+
 if __name__ == '__main__':
     weights_path = ('./weights/actorbongo_09-12-2020-200.pt', './weights/criticbongo_09-12-2020-200.pt')
     save_name = '_09-12-2020-'
-    train(3, LEARNING_RATE, save_name=save_name, load_weights=None, beatmap_name="bongo", star=2)
 
+    #trainDDPG(100, LEARNING_RATE, save_name=save_name, load_weights=None, beatmap_name="bongo", star=2)
+    trainQNetwork(100, LEARNING_RATE, batch_size=BATCH_SIZE, load_weights=None, save_name=save_name, beatmap_name="bongo", star=2)

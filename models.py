@@ -8,6 +8,7 @@ import torchvision.transforms as transforms
 ## All credits go to vy007vikas for the nice Pytorch continuous action actor-critic DDPG she/he/they made.
 counting = 0
 
+
 class Actor(nn.Module):
     def __init__(self, height=137, width=184, channels=1, action_dim=4, control_dim=4): # action dim: x, y, right_click, left_click
         super(Actor, self).__init__()
@@ -44,17 +45,23 @@ class Actor(nn.Module):
         x = F.leaky_relu(self.conv1(state))
         x = F.leaky_relu(self.conv2(x))
         #x = F.leaky_relu(self.conv3(x))
-        '''
-        if counting > 150:
+
+        if counting % 3000 == 0:
             transforms.ToPILImage()(state[0]).save('truc_state.' + str(counting) + '.png')
-            transforms.ToPILImage()(x[0, 3, :, :]).save('truc_0.' + str(counting) + '.png')
-            transforms.ToPILImage()(x[0, 4, :, :]).save('truc_1.' + str(counting) + '.png')
+            transforms.ToPILImage()(x[0, 0, :, :]).save('truc_0.' + str(counting) + '.png')
+            transforms.ToPILImage()(x[0, 1, :, :]).save('truc_1.' + str(counting) + '.png')
             transforms.ToPILImage()(x[0, 2, :, :]).save('truc_2.' + str(counting) + '.png')
-        '''
+            transforms.ToPILImage()(x[0, 3, :, :]).save('truc_3.' + str(counting) + '.png')
+            transforms.ToPILImage()(x[0, 4, :, :]).save('truc_4.' + str(counting) + '.png')
+            transforms.ToPILImage()(x[0, 5, :, :]).save('truc_5.' + str(counting) + '.png')
+            transforms.ToPILImage()(x[0, 6, :, :]).save('truc_6.' + str(counting) + '.png')
+            transforms.ToPILImage()(x[0, 7, :, :]).save('truc_7.' + str(counting) + '.png')
+            transforms.ToPILImage()(x[0, 8, :, :]).save('truc_8.' + str(counting) + '.png')
+
         #x = F.leaky_relu(self.conv4(x))
         #transforms.ToPILImage()(state[0]).save(str(counting) + '.png')
         #transforms.ToPILImage()(x[0, 0, :, :]).save('truc_0_' + str(counting) + '.png')
-        #counting += 1
+        counting += 1
         x = x.view(x.size(0), -1)
         x = F.leaky_relu(self.fc1(x))
         x = F.leaky_relu(self.fc2(x))
@@ -115,3 +122,39 @@ class Critic(nn.Module):
         return x
 
 
+class QNetwork(nn.Module):
+
+    def __init__(self, height=137, width=184, channels=1, action_dim=7400, control_dim=4):
+        super(QNetwork, self).__init__()
+        self.width = width
+        self.height = height
+        self.channels = channels
+        self.action_dim = action_dim
+
+        self.conv1 = nn.Conv2d(self.channels, 8, kernel_size=7, stride=2)
+        self.conv2 = nn.Conv2d(8, 16, kernel_size=5, stride=2)
+        self.conv3 = nn.Conv2d(16, 32, kernel_size=5, stride=2)
+
+        def conv2d_size_out(size, kernel_size=5, stride=2):
+            return (size - (kernel_size - 1) - 1) // stride + 1
+
+        convw = conv2d_size_out(conv2d_size_out(conv2d_size_out(width, kernel_size=7)))
+        convh = conv2d_size_out(conv2d_size_out(conv2d_size_out(height, kernel_size=7)))
+
+        self.fc3 = nn.Linear(convh * convw * 32, 720)
+
+        self.fcc3 = nn.Linear(control_dim, 64)
+        self.fc4 = nn.Linear(720+64, 128)
+        self.fc5 = nn.Linear(128, action_dim)
+
+    def forward(self, state, control_state):
+        x = F.leaky_relu(self.conv1(state))
+        x = F.leaky_relu(self.conv2(x))
+        x = F.leaky_relu(self.conv3(x))
+        x = x.view(x.size(0), -1)
+        x = F.leaky_relu(self.fc3(x))
+        y = F.leaky_relu(self.fcc3(control_state))
+        y = torch.cat((x, y), dim=1)
+        y = F.leaky_relu(self.fc4(y))
+        y = self.fc5(y)
+        return y

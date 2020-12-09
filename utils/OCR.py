@@ -1,6 +1,5 @@
 import time
-import pytesseract
-from PIL import Image, ImageOps, ImageEnhance
+from PIL import Image
 import torchvision.transforms
 import torch.utils
 import torch.nn as nn
@@ -70,6 +69,7 @@ class ScoreDataset(torch.utils.data.Dataset):
     def __len__(self):
         return self.length
 
+
 class AccuracyDataset(torch.utils.data.Dataset):
     def __init__(self, directory):
         self.paths = [os.path.join(directory, f) for f in os.listdir(directory)]
@@ -86,9 +86,9 @@ class AccuracyDataset(torch.utils.data.Dataset):
 
 class OCRModel(nn.Module):
     def __init__(self):
-        super(OCRModel, self).__init__() # input: 18 width, 27 h
+        super(OCRModel, self).__init__()  # input: 18 width, 27 h
         self.conv1 = nn.Conv2d(3, 3, kernel_size=3, stride=1)
-        self.pool2 = nn.MaxPool2d(2,2)
+        self.pool2 = nn.MaxPool2d(2, 2)
         self.conv3 = nn.Conv2d(3, 1, kernel_size=3, stride=1)
         self.pool4 = nn.AdaptiveMaxPool2d(4)
 
@@ -105,7 +105,7 @@ class OCRModel(nn.Module):
         x = self.fc5(x.view(x.size(0), -1))
         return x
 
-    def train(self, weights_save='OCR_digit2.pt', mode='score', epochs=15): # mode = 'score' or 'acc'
+    def train(self, weights_save='OCR_digit2.pt', mode='score', epochs=15):  # mode = 'score' or 'acc'
         dataset = ScoreDataset('E:/Programmation/Python/qsu!/dataset/train/')
         dataloader = torch.utils.data.DataLoader(dataset, batch_size=10, shuffle=True)
         dataset2 = AccuracyDataset('E:/Programmation/Python/qsu!/dataset/train2/')
@@ -154,9 +154,9 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 def init_OCR(weights='./weights/OCR/OCR_digit2.pt'):
-    OCR = OCRModel().to(device)
-    OCR.load_state_dict(torch.load(weights))
-    return OCR
+    ocr = OCRModel().to(device)
+    ocr.load_state_dict(torch.load(weights))
+    return ocr
 
 
 counter = 0
