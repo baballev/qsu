@@ -53,18 +53,20 @@ class NormalActionNoise(ActionNoise):
 
 # Based on http://math.stackexchange.com/questions/1287634/implementing-ornstein-uhlenbeck-in-matlab
 class OrnsteinUhlenbeckActionNoise(ActionNoise):
-    def __init__(self, mu, sigma, theta=.15, dt=torch.tensor([0.12], device=device), x0=None):
+    def __init__(self, mu, sigma, theta=.15, dt=torch.tensor([0.12], device=device), x0=None, min_val=0.0, max_val=0.9999):
         self.theta = theta
         self.mu = mu
         self.sigma = sigma
         self.dt = dt
         self.x0 = x0
+        self.min_val = min_val
+        self.max_val = max_val
         self.x_prev = self.x0 if self.x0 is not None else torch.zeros_like(self.mu, device=device)
 
-    def get_noise(self):
+    def __call__(self):
         x = self.x_prev + self.theta * (self.mu - self.x_prev) * self.dt + self.sigma * torch.sqrt(self.dt) * torch.randn(size=self.mu.shape, device=device)
         self.x_prev = x
-        return x
+        return torch.clamp(x, self.min_val, self.max_val)
 
     def reset(self):
         self.x_prev = self.x0 if self.x0 is not None else torch.zeros_like(self.mu, device=device)

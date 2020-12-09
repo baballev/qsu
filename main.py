@@ -1,5 +1,5 @@
 import math
-from random import random
+from random import random, randint
 import torch
 import time
 import pyautogui
@@ -25,13 +25,12 @@ HEIGHT = 546
 
 EPS_START = 0.9
 EPS_END = 0.2
-EPS_DECAY = 20000 #TODO tune this
+EPS_DECAY = 125000
 TARGET_UPDATE = 5
 
-DISCRETE_FACTOR = 8
+DISCRETE_FACTOR = 10
 X_DISCRETE = 685//DISCRETE_FACTOR + 1
 Y_DISCRETE = (560-54)//DISCRETE_FACTOR + 1
-
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -230,10 +229,10 @@ def perform_discrete_action(action, human_clicker, thread):
         pyautogui.mouseDown(button="left")
         pyautogui.mouseDown(button="right")
         left, right = 1.0, 1.0
-    x = x_disc * DISCRETE_FACTOR + 145
-    y = y_disc * DISCRETE_FACTOR + 54 + 26
+    x = x_disc * DISCRETE_FACTOR + 145 + randint(-DISCRETE_FACTOR//2, DISCRETE_FACTOR//2)
+    y = y_disc * DISCRETE_FACTOR + 54 + 26 + randint(-DISCRETE_FACTOR//2, DISCRETE_FACTOR//2)
 
-    th = Thread(target=threaded_mouse_move, args=(x, y, 0.09, human_clicker))
+    th = Thread(target=threaded_mouse_move, args=(x, y, 0.1, human_clicker))
     if thread is not None:
         thread.join()
     th.start()
@@ -338,7 +337,7 @@ def trainQNetwork(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights
             step_time_curr = time.time()
             if step_time_curr - step_time_prev < 1/frequency:
                 dt = 1/frequency - (step_time_curr - step_time_prev)
-                time.sleep(dt/1.15)
+                time.sleep(dt/1.1)
 
         end = time.time()
         delta_t = end - start
@@ -368,7 +367,7 @@ def trainQNetwork(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights
         pyautogui.mouseUp(button='right')
         pyautogui.mouseUp(button='left')
 
-    if (episode_nb - 1) % 15 != 0:
+    if (episode_nb - 1) % 10 != 0:
         print('Mean reward over last episodes: ')
         print(episodes_reward / c)
         if beatmap_name is not None:
@@ -382,8 +381,9 @@ def trainQNetwork(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights
 
 
 if __name__ == '__main__':
-    weights_path = ('./weights/actorbongo_09-12-2020-200.pt', './weights/criticbongo_09-12-2020-200.pt')
+    #weights_path = ('./weights/actorbongo_09-12-2020-200.pt', './weights/criticbongo_09-12-2020-200.pt')
+    weights_path = './weights/q_net_bongo_09-12-2020-20.pt'
     save_name = '_09-12-2020-'
 
     #trainDDPG(100, LEARNING_RATE, save_name=save_name, load_weights=None, beatmap_name="bongo", star=2)
-    trainQNetwork(100, LEARNING_RATE, batch_size=BATCH_SIZE, load_weights=None, save_name=save_name, beatmap_name="bongo", star=2)
+    trainQNetwork(300, LEARNING_RATE, eval=False, load_weights=None, beatmap_name="fubuki guys", star=2, save_name=save_name, batch_size=BATCH_SIZE)

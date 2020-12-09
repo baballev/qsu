@@ -12,7 +12,8 @@ import pyautogui
 from utils.osu_config import OSU_FOLDER_PATH, swap_to_AI, restore_player, USERNAME, AI_NAME
 import utils.OCR
 
-KEY_DICT = {'0': 0x30,
+KEY_DICT = {' ': 0x20,
+            '0': 0x30,
             '1': 0x31,
             '2': 0x32,
             '3': 0x33,

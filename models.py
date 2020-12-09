@@ -141,12 +141,11 @@ class QNetwork(nn.Module):
         convh = conv2d_size_out(conv2d_size_out(height, kernel_size=7))
 
         self.fc3 = nn.Linear(convh * convw * 32, 2048)
-        self.fcc3 = nn.Linear(control_dim, 64)
-        self.fc4 = nn.Linear(2048+64, 512)
+        self.fcc3 = nn.Linear(control_dim, 72)
+        self.fc4 = nn.Linear(2048+72, 512)
         self.fc5 = nn.Linear(512, 256)
-        self.fc6 = nn.Linear(256, 256)
-        self.fc7 = nn.Linear(256, 1024)
-        self.fc8 = nn.Linear(1024, action_dim)
+        self.fc6 = nn.Linear(256, 1024)
+        self.fc7 = nn.Linear(1024, action_dim)
 
     def forward(self, state, control_state):
         x = F.leaky_relu(self.conv1(state))
@@ -158,6 +157,5 @@ class QNetwork(nn.Module):
         y = F.leaky_relu(self.fc4(y))
         y = F.leaky_relu(self.fc5(y))
         y = F.leaky_relu(self.fc6(y))
-        y = F.leaky_relu(self.fc7(y))
-        y = self.fc8(y)
+        y = self.fc7(y)
         return y

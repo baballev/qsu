@@ -143,6 +143,7 @@ class QTrainer:
         self.acc_ocr = utils.OCR.init_OCR('./weights/OCR/OCR_acc2.pt')
         self.hc = pyclick.HumanClicker()
         self.noise = utils.noise.NormalActionNoise(mu=torch.tensor(0.5, device=device), sigma=torch.tensor(0.15, device=device), min_val=0.0, max_val=0.999)
+        #self.noise = utils.noise.OrnsteinUhlenbeckActionNoise(mu=torch.tensor([0.5, 0.5, 0.5], device=device), sigma=0.15, theta=0.25, x0=torch.tensor([0.5, 0.5, 0.5], device=device), min_val=0.0, max_val=0.9999)
 
     def select_action(self, state, controls_state):  # Greedy policy
         action = self.q_network(state, controls_state).detach()
