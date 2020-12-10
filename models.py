@@ -148,8 +148,30 @@ class QNetwork(nn.Module):
         self.fc7 = nn.Linear(1024, action_dim)
 
     def forward(self, state, control_state):
+        global counting
         x = F.leaky_relu(self.conv1(state))
         x = F.leaky_relu(self.conv2(x))
+        '''
+        if counting % 20 == 15:
+            transforms.ToPILImage()(state[0]).save('truc_state.' + str(counting) + '.png')
+            transforms.ToPILImage()(x[0, 0, :, :]).save('truc_0.' + str(counting) + '.png')
+            transforms.ToPILImage()(x[0, 1, :, :]).save('truc_1.' + str(counting) + '.png')
+            transforms.ToPILImage()(x[0, 2, :, :]).save('truc_2.' + str(counting) + '.png')
+            transforms.ToPILImage()(x[0, 3, :, :]).save('truc_3.' + str(counting) + '.png')
+            transforms.ToPILImage()(x[0, 4, :, :]).save('truc_4.' + str(counting) + '.png')
+            transforms.ToPILImage()(x[0, 5, :, :]).save('truc_5.' + str(counting) + '.png')
+            transforms.ToPILImage()(x[0, 6, :, :]).save('truc_6.' + str(counting) + '.png')
+            transforms.ToPILImage()(x[0, 7, :, :]).save('truc_7.' + str(counting) + '.png')
+            transforms.ToPILImage()(x[0, 8, :, :]).save('truc_8.' + str(counting) + '.png')
+            transforms.ToPILImage()(x[0, 9, :, :]).save('truc_9.' + str(counting) + '.png')
+            transforms.ToPILImage()(x[0, 10, :, :]).save('truc_10.' + str(counting) + '.png')
+            transforms.ToPILImage()(x[0, 11, :, :]).save('truc_11.' + str(counting) + '.png')
+            transforms.ToPILImage()(x[0, 12, :, :]).save('truc_12.' + str(counting) + '.png')
+            transforms.ToPILImage()(x[0, 13, :, :]).save('truc_13.' + str(counting) + '.png')
+            transforms.ToPILImage()(x[0, 14, :, :]).save('truc_14.' + str(counting) + '.png')
+            transforms.ToPILImage()(x[0, 15, :, :]).save('truc_15.' + str(counting) + '.png')
+        counting += 1
+        '''
         x = x.view(x.size(0), -1)
         x = F.leaky_relu(self.fc3(x))
         y = F.leaky_relu(self.fcc3(control_state))

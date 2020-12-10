@@ -90,33 +90,29 @@ def stop_osu(process):
 def move_to_songs(star=1):
     hc = pyclick.HumanClicker()
     time.sleep(1)
-    delta_t = random.random()
-    hc.move((496, 325), delta_t * 1.5 + 0.3)
+    hc.move((496, 325),  0.3)
     hc.click()
-    time.sleep(0.2)
+    time.sleep(0.4)
     hc.click()
-    time.sleep(0.1)
-    delta_t = random.random()
-    hc.move((660, 210), delta_t * 1.5 + 0.3)
+    time.sleep(0.4)
+    hc.move((660, 210), 0.3)
     hc.click()
-    time.sleep(0.3)
-    delta_t = random.random()
-    hc.move((760, 250), delta_t * 1.5 + 0.3)
+    time.sleep(0.4)
+    hc.move((760, 250), 0.3)
     hc.click()
-    delta_t = random.random()
-    time.sleep(delta_t + 1)
+    time.sleep(1)
     pyautogui.scroll(10)
-    time.sleep(0.2)
+    time.sleep(0.4)
     pyautogui.scroll(10)
-    time.sleep(0.1)
+    time.sleep(0.4)
     pyautogui.scroll(10)
     time.sleep(1.25)
     pyautogui.scroll(-10)
-    time.sleep(0.1)
+    time.sleep(0.4)
     pyautogui.scroll(-10)
-    delta_t = random.random()
-    time.sleep(0.5 + delta_t)
+    time.sleep(0.5)
     hc.move((730, 110 + star * 60), 1)
+    time.sleep(0.5)
     hc.click()
     time.sleep(0.4)
     hc.move((450, 320), 0.8)
@@ -128,15 +124,15 @@ def launch_random_beatmap():
     hc = pyclick.HumanClicker()
     pyautogui.mouseUp(button='left')
     pyautogui.mouseUp(button='right')
-    time.sleep(0.25)
+    time.sleep(0.1)
     hc.move((338, 594), 0.25)
     time.sleep(0.1)
     hc.click()
-    time.sleep(3.5)
+    time.sleep(3.3)
     hc.move((984, 524), 0.5)
-    time.sleep(0.25)
+    time.sleep(0.1)
     hc.click()
-    time.sleep(0.3)
+    time.sleep(0.1)
     hc.move((500, 320), 0.3)
     time.sleep(0.7)
     return
@@ -146,14 +142,14 @@ def select_beatmap(search_name):
     hc = pyclick.HumanClicker()
     pyautogui.mouseUp(button='left')
     pyautogui.mouseUp(button='right')
-    time.sleep(0.2)
+    time.sleep(0.5)
     for letter in search_name:
         win32api.keybd_event(KEY_DICT[letter], 0, 0, 0)
-        time.sleep(0.02)
+        time.sleep(0.04)
         win32api.keybd_event(KEY_DICT[letter], 0, win32con.KEYEVENTF_KEYUP, 0)
 
     hc.move((830, 370), 2.0)
-    time.sleep(0.5)
+    time.sleep(0.8)
     hc.click()
     return
 
@@ -172,21 +168,21 @@ def launch_selected_beatmap():
 
 def enable_nofail():
     hc = pyclick.HumanClicker()
-    time.sleep(0.25)
-    hc.move((275, 590), 0.4)
-    time.sleep(0.1)
+    time.sleep(0.2)
+    hc.move((275, 590), 0.5)
+    time.sleep(0.2)
     hc.click()
-    time.sleep(0.3)
+    time.sleep(0.2)
     hc.move((385, 195), 0.5)
-    time.sleep(0.05)
+    time.sleep(0.15)
     hc.click()
     time.sleep(0.2)
     hc.move((350, 520), 0.6)
     time.sleep(0.15)
     hc.click()
-    time.sleep(0.2)
+    time.sleep(0.3)
     hc.move((150, 520), 0.7)
-    time.sleep(0.2)
+    time.sleep(0.3)
     return
 
 
@@ -210,12 +206,6 @@ def reset_mods():
     return
 
 
-def threaded_hide_chat_if_nec(screen, hc):
-    if utils.OCR.check_stuck_social(screen):
-        hide_chat(hc)
-    return
-
-
 def hide_chat(hc):
     time.sleep(0.05)
     hc.move((992, 619), 0.05)
@@ -227,7 +217,7 @@ def hide_chat(hc):
 
 def return_to_beatmap():
     hc = pyclick.HumanClicker()
-    time.sleep(10)
+    time.sleep(8)
     hc.move((800, 270), 0.8)
     time.sleep(0.2)
     hc.click()
@@ -236,7 +226,16 @@ def return_to_beatmap():
     hc.move((50, 605), 0.9)
     time.sleep(0.15)
     hc.click()
-    time.sleep(0.8)
+    time.sleep(0.4)
+    return
+
+
+def shut_annoying_window():
+    hc = pyclick.HumanClicker()
+    time.sleep(1)
+    hc.move((1390, 782), 0.8)
+    time.sleep(0.1)
+    hc.click()
     return
 
 

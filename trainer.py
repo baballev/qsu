@@ -7,6 +7,7 @@ import models
 import utils.noise
 import utils.screen
 import utils.OCR
+import utils.info_plot
 from memory import ReplayMemory
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -145,6 +146,11 @@ class QTrainer:
         self.noise = utils.noise.NormalActionNoise(mu=torch.tensor(0.5, device=device), sigma=torch.tensor(0.15, device=device), min_val=0.0, max_val=0.999)
         #self.noise = utils.noise.OrnsteinUhlenbeckActionNoise(mu=torch.tensor([0.5, 0.5, 0.5], device=device), sigma=0.15, theta=0.25, x0=torch.tensor([0.5, 0.5, 0.5], device=device), min_val=0.0, max_val=0.9999)
 
+        self.plotter = utils.info_plot.LivePlot(min_y=0, max_y=1.5, num_points=500)
+        self.avg_reward_plotter = utils.info_plot.LivePlot(min_y=-0.5, max_y=4.0, window_x=1270, num_points=500)
+        self.running_loss = 0.0
+        self.running_counter = 0
+
     def select_action(self, state, controls_state):  # Greedy policy
         action = self.q_network(state, controls_state).detach()
         _, action = torch.max(action, 1)
@@ -169,7 +175,12 @@ class QTrainer:
         next_state_values = self.target_q_network(s2, c_s2).max(1)[0].detach()
         expected_state_action_values = r1 + self.gamma * next_state_values
         loss = F.smooth_l1_loss(state_action_values, expected_state_action_values)
-
+        self.running_loss += loss
+        if self.running_counter % 100 == 0:
+            self.plotter.step(self.running_loss/100)
+            self.plotter.show()
+            self.running_loss = 0.0
+        self.running_counter += 1
         self.optimizer.zero_grad()
         loss.backward()
 
