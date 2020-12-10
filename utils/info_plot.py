@@ -9,7 +9,7 @@ window_idx = 1
 
 
 class LivePlot:
-    def __init__(self, min_x=-120, max_x=0.5, min_y=-10, num_points=2000, max_y=10, window_x=1900, window_y=90):
+    def __init__(self, min_x=-500, max_x=0, min_y=-10, num_points=500, max_y=10, window_x=1900, window_y=90, x_axis='100 of steps', y_axis='reward'):
         global window_idx
         if window_idx == 1:
             th = Thread(target=utils.osu_routines.shut_annoying_window)
@@ -17,6 +17,8 @@ class LivePlot:
         self.fig = plt.figure()
         self.ax = self.fig.add_subplot(111)
         plt.ylim(min_y, max_y)
+        plt.xlabel(x_axis)
+        plt.ylabel(y_axis)
         self.x = np.linspace(min_x, max_x, num_points)
         self.y = [0 for _ in range(num_points)]
         self.line, = self.ax.plot(self.x, self.y)

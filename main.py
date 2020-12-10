@@ -384,6 +384,8 @@ def trainQNetwork(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights
         else:
             tmp = save_name
         q_trainer.save_model(tmp, num=episode_nb - 1)
+        q_trainer.plotter.fig.savefig('average_loss' + str(episode_nb-1) + '.png')
+        q_trainer.avg_reward_plotter.fig.savefig('average_reward' + str(episode_nb-1) + '.png')
 
     q_trainer.screen.stop()
     utils.osu_routines.stop_osu(process)
