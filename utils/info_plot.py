@@ -21,7 +21,8 @@ class LivePlot:
         self.y = [0 for _ in range(num_points)]
         self.line, = self.ax.plot(self.x, self.y)
         self.fig.show()
-        th.join()
+        if window_idx == 1:
+            th.join()
         time.sleep(0.5)
         self.window = win32gui.FindWindow(None, "Figure " + str(window_idx))
         window_idx += 1
