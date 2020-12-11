@@ -14,6 +14,7 @@ class LivePlot:
         if window_idx == 1:
             th = Thread(target=utils.osu_routines.shut_annoying_window)
             th.start()
+        self.min_x = min_x
         self.fig = plt.figure()
         self.ax = self.fig.add_subplot(111)
         plt.ylim(min_y, max_y)
@@ -34,21 +35,33 @@ class LivePlot:
         self.show()
         time.sleep(0.1)
         self.show()
+        self.t = 0
+        self.curve = None
+        self.text = None
 
     def step(self, reward):
         #print(reward)
         self.y.append(reward.item())
         self.y.pop(0)
         self.line.set_ydata(self.y)
+        self.t += 1
 
     def show(self):
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
     def fit(self):
-        a, b = np.polyfit(self.x, self.y, 1)
-        self.ax.text(-450, 2, str(a) + '.x + ' + str(b))
-        self.ax.plot(self.x, a*self.x+b)
+        if self.curve is not None:
+            l = self.curve.pop(0)
+            t = self.text.pop(0)
+            l.remove()
+            t.remove()
+            del l
+            del t
+        a, b = np.polyfit(self.x[max(-self.t, self.min_x):], self.y[max(-self.t, self.min_x):], 1)
+        self.text = self.ax.text(-450, 2, '%.4f'%a + '.x + ' + '%.4f'%b)
+        self.curve = self.ax.plot(self.x, a*self.x+b)
+
 
 if __name__ == '__main__':
     '''

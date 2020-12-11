@@ -255,7 +255,7 @@ def perform_discrete_action(action, human_clicker, frequency, thre):
 
 def trainQNetwork(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights=None, save_name='tests',
                   beatmap_name=None, star=1, frequency=10, evaluation=False):
-    training_steps = 921*17 + 982*10 + 970*70 # TODO
+    training_steps =  130000# TODO
     print('Discretized x: ' + str(X_DISCRETE))
     print('Discretized y: ' + str(Y_DISCRETE))
     print('Action dim: ' + str(X_DISCRETE * Y_DISCRETE * 4))
@@ -350,6 +350,7 @@ def trainQNetwork(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights
         print(str(step) + ' time steps in ' + str(delta_t) + ' s.')
         print(str(step / delta_t) + ' time_steps per second.')
         gc.collect()
+
         q_trainer.avg_reward_plotter.fit()
         q_trainer.avg_reward_plotter.show()
 
@@ -396,7 +397,7 @@ def trainQNetwork(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights
 if __name__ == '__main__':
     # weights_path = ('./weights/actorbongo_09-12-2020-200.pt', './weights/criticbongo_09-12-2020-200.pt')
     weights_path = './weights/q_net_fubuki guysbis_11-12-2020-40.pt'
-    save_name = 'bis_11-12-2020-'
+    save_name = '_12-12-2020-'
 
     # trainDDPG(100, LEARNING_RATE, save_name=save_name, load_weights=None, beatmap_name="bongo", star=2)
     trainQNetwork(400, LEARNING_RATE, evaluation=False, load_weights=weights_path, beatmap_name="fubuki guys", star=2,
