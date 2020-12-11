@@ -22,7 +22,7 @@ pyautogui.MINIMUM_SLEEP = 0.0
 pyautogui.PAUSE = 0.0
 
 BATCH_SIZE = 10
-LEARNING_RATE = 0.00001
+LEARNING_RATE = 0.000001
 GAMMA = 0.999
 TAU = 0.0001
 MAX_STEPS = 25000
@@ -32,7 +32,7 @@ HEIGHT = 546
 EPS_START = 0.9
 EPS_END = 0.2
 EPS_DECAY = 300000
-TARGET_UPDATE = 5
+TARGET_UPDATE = 10
 
 DISCRETE_FACTOR = 10
 X_DISCRETE = 685 // DISCRETE_FACTOR + 1
@@ -242,8 +242,8 @@ def perform_discrete_action(action, human_clicker, frequency, thre):
         pyautogui.mouseDown(button="left")
         pyautogui.mouseDown(button="right")
         left, right = 1.0, 1.0
-    x = x_disc * DISCRETE_FACTOR + 145 + randint(-DISCRETE_FACTOR // 2, DISCRETE_FACTOR // 2)
-    y = y_disc * DISCRETE_FACTOR + 54 + 26 + randint(-DISCRETE_FACTOR // 2, DISCRETE_FACTOR // 2)
+    x = x_disc * DISCRETE_FACTOR + 145 + randint(-DISCRETE_FACTOR // 3, DISCRETE_FACTOR // 3)
+    y = y_disc * DISCRETE_FACTOR + 54 + 26 + randint(-DISCRETE_FACTOR // 3, DISCRETE_FACTOR // 3)
 
     curve = pyclick.HumanCurve(pyautogui.position(), (x, y), targetPoints=25 - frequency)
     if thre is not None:
@@ -255,14 +255,14 @@ def perform_discrete_action(action, human_clicker, frequency, thre):
 
 def trainQNetwork(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights=None, save_name='tests',
                   beatmap_name=None, star=1, frequency=10, evaluation=False):
-    training_steps = 921*17 + 982*10 # TODO
+    training_steps = 921*17 + 982*10 + 970*70 # TODO
     print('Discretized x: ' + str(X_DISCRETE))
     print('Discretized y: ' + str(Y_DISCRETE))
     print('Action dim: ' + str(X_DISCRETE * Y_DISCRETE * 4))
     print('X_MAX = ' + str(145 + (X_DISCRETE - 1) * DISCRETE_FACTOR))
     print('YMAX = ' + str(54 + 26 + (Y_DISCRETE - 1) * DISCRETE_FACTOR))
     if evaluation:
-        learning_rate /= 1000
+        learning_rate /= 10000
 
     q_trainer = QTrainer(batch_size=batch_size, lr=learning_rate, discrete_height=Y_DISCRETE, discrete_width=X_DISCRETE,
                          load_weights=load_weights)
@@ -350,6 +350,8 @@ def trainQNetwork(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights
         print(str(step) + ' time steps in ' + str(delta_t) + ' s.')
         print(str(step / delta_t) + ' time_steps per second.')
         gc.collect()
+        q_trainer.avg_reward_plotter.fit()
+        q_trainer.avg_reward_plotter.show()
 
         if i % 50 == 0:
             q_trainer.plotter.fig.savefig('average_loss' + str(i) + '.png')
@@ -393,8 +395,8 @@ def trainQNetwork(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights
 
 if __name__ == '__main__':
     # weights_path = ('./weights/actorbongo_09-12-2020-200.pt', './weights/criticbongo_09-12-2020-200.pt')
-    weights_path = './weights/q_net_fubuki guys_10-12-2020-10.pt'
-    save_name = '_11-12-2020-'
+    weights_path = './weights/q_net_fubuki guysbis_11-12-2020-40.pt'
+    save_name = 'bis_11-12-2020-'
 
     # trainDDPG(100, LEARNING_RATE, save_name=save_name, load_weights=None, beatmap_name="bongo", star=2)
     trainQNetwork(400, LEARNING_RATE, evaluation=False, load_weights=weights_path, beatmap_name="fubuki guys", star=2,

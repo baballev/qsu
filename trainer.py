@@ -136,7 +136,7 @@ class QTrainer:
         print(self.q_network)
         if load_weights is not None:
             self.load_models(load_weights)
-        self.optimizer = torch.optim.Adam(self.q_network.parameters(), self.lr)
+        self.optimizer = torch.optim.AdamW(self.q_network.parameters(), self.lr, weight_decay=0.01)
 
         self.memory = ReplayMemory(3000)
         self.screen = utils.screen.init_screen(capture_output="pytorch_float_gpu")
@@ -146,8 +146,8 @@ class QTrainer:
         self.noise = utils.noise.NormalActionNoise(mu=torch.tensor(0.5, device=device), sigma=torch.tensor(0.15, device=device), min_val=0.0, max_val=0.999)
         #self.noise = utils.noise.OrnsteinUhlenbeckActionNoise(mu=torch.tensor([0.5, 0.5, 0.5], device=device), sigma=0.15, theta=0.25, x0=torch.tensor([0.5, 0.5, 0.5], device=device), min_val=0.0, max_val=0.9999)
 
-        self.plotter = utils.info_plot.LivePlot(min_y=0, max_y=1.5, num_points=500, y_axis='Average loss')
-        self.avg_reward_plotter = utils.info_plot.LivePlot(min_y=-0.5, max_y=4.0, window_x=1270, num_points=500, y_axis='Average reward')
+        self.plotter = utils.info_plot.LivePlot(min_y=0, max_y=1.0, num_points=500, y_axis='Average loss')
+        self.avg_reward_plotter = utils.info_plot.LivePlot(min_y=-0.3, max_y=2.5, window_x=1270, num_points=500, y_axis='Average reward')
         self.running_loss = 0.0
         self.running_counter = 0
 
@@ -185,7 +185,7 @@ class QTrainer:
         loss.backward()
 
         for param in self.q_network.parameters():  # Todo: Benchmark to see whether this is faster than value_clip
-            param.grad.data.clamp_(-0.1, 0.1)
+            param.grad.data.clamp_(-0.01, 0.01)
 
         self.optimizer.step()
 

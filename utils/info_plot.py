@@ -45,6 +45,10 @@ class LivePlot:
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 
+    def fit(self):
+        a, b = np.polyfit(self.x, self.y, 1)
+        self.ax.text(-450, 2, str(a) + '.x + ' + str(b))
+        self.ax.plot(self.x, a*self.x+b)
 
 if __name__ == '__main__':
     '''
