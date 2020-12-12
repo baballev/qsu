@@ -53,13 +53,13 @@ class LivePlot:
     def fit(self):
         if self.curve is not None:
             l = self.curve.pop(0)
-            t = self.text.pop(0)
             l.remove()
-            t.remove()
             del l
-            del t
         a, b = np.polyfit(self.x[max(-self.t, self.min_x):], self.y[max(-self.t, self.min_x):], 1)
-        self.text = self.ax.text(-450, 2, '%.4f'%a + '.x + ' + '%.4f'%b)
+        if self.text is not None:
+            self.text.set_text('%.4f'%a + '.x + ' + '%.4f'%b)
+        else:
+            self.text = self.ax.text(-450, 2, '%.4f'%a + '.x + ' + '%.4f'%b)
         self.curve = self.ax.plot(self.x, a*self.x+b)
 
 
