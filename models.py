@@ -142,9 +142,9 @@ class QNetwork(nn.Module):
 
         self.fc3 = nn.Linear(convh * convw * 32, 2048)
         self.fcc3 = nn.Linear(control_dim, 72)
-        self.fc4 = nn.Linear(2048+72, 512)
-        self.fc5 = nn.Linear(512, 256)
-        self.fc6 = nn.Linear(256, 1024)
+        self.fc4 = nn.Linear(2048+72, 1024)
+        self.fc5 = nn.Linear(1024, 512)
+        self.fc6 = nn.Linear(512, 1024)
         self.fc7 = nn.Linear(1024, action_dim)
 
     def forward(self, state, control_state):

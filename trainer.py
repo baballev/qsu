@@ -167,17 +167,16 @@ class QTrainer:
 
     def optimize(self):
         if len(self.memory) < self.batch_size:
-            time.sleep(0.01)
             return
         s1, a1, r1, s2, c_s1, c_s2 = self.memory.sample(self.batch_size)
         s = self.q_network(s1, c_s1)
         state_action_values = torch.stack([s[i, a1[i]] for i in range(self.batch_size)])  # Get estimated Q(s1,a1)
         next_state_values = self.target_q_network(s2, c_s2).max(1)[0].detach()
         expected_state_action_values = r1 + self.gamma * next_state_values
-        loss = F.smooth_l1_loss(state_action_values, expected_state_action_values)
+        loss = torch.clamp(F.mse_loss(state_action_values, expected_state_action_values), 0, 1.5)
         self.running_loss += loss
-        if self.running_counter % 500 == 0:
-            self.plotter.step(self.running_loss/500)
+        if self.running_counter % 200 == 0:
+            self.plotter.step(self.running_loss/200)
             self.plotter.show()
             self.running_loss = 0.0
         self.running_counter += 1

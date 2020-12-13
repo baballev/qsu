@@ -9,7 +9,7 @@ window_idx = 1
 
 
 class LivePlot:
-    def __init__(self, min_x=-500, max_x=0, min_y=-10, num_points=500, max_y=10, window_x=1900, window_y=90, x_axis='500 of steps', y_axis='reward'):
+    def __init__(self, min_x=-500, max_x=0, min_y=-10, num_points=500, max_y=10, window_x=1900, window_y=90, x_axis='200 of steps', y_axis='reward'):
         global window_idx
         if window_idx == 1:
             th = Thread(target=utils.osu_routines.shut_annoying_window)

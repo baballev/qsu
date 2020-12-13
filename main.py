@@ -12,7 +12,7 @@ import utils.osu_routines
 import utils.OCR
 import utils.noise
 import utils.info_plot
-from trainer import Trainer, QTrainer
+from trainer import QTrainer
 
 torch.cuda.empty_cache()
 torch.set_printoptions(sci_mode=False)
@@ -21,12 +21,13 @@ pyautogui.MINIMUM_DURATION = 0.0
 pyautogui.MINIMUM_SLEEP = 0.0
 pyautogui.PAUSE = 0.0
 
-BATCH_SIZE = 15
+BATCH_SIZE = 20
 LEARNING_RATE = 0.00001
 GAMMA = 0.999
 MAX_STEPS = 25000
 WIDTH = 735
 HEIGHT = 546
+TAU = 0.00001
 
 EPS_START = 0.9
 EPS_END = 0.1
@@ -50,14 +51,14 @@ def get_reward(score, previous_score, acc, previous_acc, step):
     if acc > previous_acc:
         bonus = torch.tensor(1.0, device=device)
     elif acc < previous_acc:
-        bonus = torch.tensor(-0.3, device=device)
+        bonus = torch.tensor(-1.0, device=device)
     else:
         if acc < 0.2 + 0.1 * (step // 500):
             bonus = torch.tensor(-0.3, device=device)
         else:
             bonus = torch.tensor(0.0, device=device)
-    return torch.log10(max((score - previous_score),
-                           torch.tensor(1.0, device=device))) + bonus  # - 0.005 * ((x - 0.5)**2 + (y - 0.5)**2)
+    return torch.clamp(torch.log10(max((score - previous_score),
+                           torch.tensor(1.0, device=device))) + bonus, -1, 1)
 
 
 def perform_discrete_action(action, human_clicker, frequency, thre):
@@ -92,7 +93,7 @@ def perform_discrete_action(action, human_clicker, frequency, thre):
 
 def trainQNetwork(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights=None, save_name='tests',
                   beatmap_name=None, star=1, frequency=10, evaluation=False):
-    training_steps = 50000
+    training_steps = 0
     print('Discretized x: ' + str(X_DISCRETE))
     print('Discretized y: ' + str(Y_DISCRETE))
     print('Action dim: ' + str(X_DISCRETE * Y_DISCRETE * 4))
@@ -173,8 +174,8 @@ def trainQNetwork(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights
             controls_state = new_controls_state
 
             episode_average_reward += reward
-            if k % 500 == 0:
-                tmp = episode_average_reward / 500
+            if k % 200 == 0:
+                tmp = episode_average_reward / 200
                 q_trainer.avg_reward_plotter.step(tmp)
                 q_trainer.avg_reward_plotter.show()
                 episodes_reward += tmp
@@ -231,6 +232,6 @@ def trainQNetwork(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights
 
 if __name__ == '__main__':
     weights_path = './weights/q_net_fubuki guysReboot_12-12-2020-210.pt'
-    save_name = '_13-12-2020-'
-    trainQNetwork(400, LEARNING_RATE, evaluation=False, load_weights=weights_path, beatmap_name="fubuki guys", star=2,
+    save_name = 'reboot_13-12-2020-'
+    trainQNetwork(400, LEARNING_RATE, evaluation=False, load_weights=None, beatmap_name="fubuki guys", star=2,
                   save_name=save_name, batch_size=BATCH_SIZE)
