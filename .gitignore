@@ -4,6 +4,7 @@ backup_osu!/
 weights/
 papers&references/
 utils/osu!.OMBest.cfg
+utils/osu!.OMBest LOGIN.cfg
 valid/
 dataset/
 logs/

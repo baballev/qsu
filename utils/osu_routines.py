@@ -147,8 +147,7 @@ def select_beatmap(search_name):
         win32api.keybd_event(KEY_DICT[letter], 0, 0, 0)
         time.sleep(0.04)
         win32api.keybd_event(KEY_DICT[letter], 0, win32con.KEYEVENTF_KEYUP, 0)
-
-    hc.move((830, 370), 2.0)
+    hc.move((830, 370), 2.5)
     time.sleep(0.8)
     hc.click()
     return
