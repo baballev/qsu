@@ -125,23 +125,22 @@ class Trainer:
 
 
 class QTrainer:
-
-    def __init__(self, batch_size=5, lr=0.0001, gamma=0.999, load_weights=None, discrete_height=34, discrete_width=46):
+    def __init__(self, env, batch_size=5, lr=0.0001, gamma=0.999, load_weights=None):
         self.batch_size = batch_size
         self.lr = lr
         self.gamma = gamma
 
-        self.q_network = models.QNetwork(action_dim=discrete_width * discrete_height * 4).to(device)
-        self.target_q_network = models.QNetwork(action_dim=discrete_width * discrete_height * 4).to(device)
+        self.env = env
+
+        self.q_network = models.QNetwork(action_dim=env.action_space.n).to(device)
+        self.target_q_network = models.QNetwork(action_dim=env.action_space.n).to(device)
         print(self.q_network)
         if load_weights is not None:
             self.load_models(load_weights)
         self.optimizer = torch.optim.RMSprop(self.q_network.parameters(), self.lr)
 
-        self.memory = ReplayMemory(25000)
-        self.screen = utils.screen.init_screen(capture_output="pytorch_float_gpu")
-        self.score_ocr = utils.OCR.init_OCR('./weights/OCR/OCR_score2.pt')
-        self.acc_ocr = utils.OCR.init_OCR('./weights/OCR/OCR_acc2.pt')
+        self.memory = ReplayMemory(25000) # TODO: Increase
+
         self.hc = pyclick.HumanClicker()
         self.noise = utils.noise.NormalActionNoise(mu=torch.tensor(0.5, device=device), sigma=torch.tensor(0.15, device=device), min_val=0.0, max_val=0.999)
         #self.noise = utils.noise.OrnsteinUhlenbeckActionNoise(mu=torch.tensor([0.5, 0.5, 0.5], device=device), sigma=0.15, theta=0.25, x0=torch.tensor([0.5, 0.5, 0.5], device=device), min_val=0.0, max_val=0.9999)

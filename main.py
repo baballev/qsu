@@ -12,6 +12,7 @@ import utils.osu_routines
 import utils.OCR
 import utils.noise
 import utils.info_plot
+import environment
 from trainer import QTrainer
 
 torch.cuda.empty_cache()
@@ -27,7 +28,7 @@ GAMMA = 0.999
 MAX_STEPS = 25000
 WIDTH = 735
 HEIGHT = 546
-TAU = 0.00001
+STACK_SIZE = 4
 
 EPS_START = 0.9
 EPS_END = 0.1
@@ -102,8 +103,8 @@ def trainQNetwork(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights
     if evaluation:
         learning_rate = 0.0
 
-    q_trainer = QTrainer(batch_size=batch_size, lr=learning_rate, discrete_height=Y_DISCRETE, discrete_width=X_DISCRETE,
-                         load_weights=load_weights)
+    env = environment.OsuEnv(X_DISCRETE, Y_DISCRETE, WIDTH, HEIGHT, STACK_SIZE)
+    q_trainer = QTrainer(env, batch_size=batch_size, lr=learning_rate, load_weights=load_weights)
 
     # Osu routine
     process, wndw = utils.osu_routines.start_osu()
@@ -125,7 +126,7 @@ def trainQNetwork(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights
         previous_score = torch.tensor(0.0, device=device)
         previous_acc = torch.tensor(100.0, device=device)
         controls_state = torch.tensor([[0.5, 0.5, 0.0, 0.0]], device=device)
-        state = utils.screen.get_game_screen(q_trainer.screen).unsqueeze_(0).sum(1, keepdim=True) / 3.0
+        state = utils.screen.get_game_screen(env.screen).unsqueeze_(0).sum(1, keepdim=True) / 3.0
         thread, thr, thready_mercury = None, None, None
         start = time.time()
         for step in range(MAX_STEPS):
@@ -145,8 +146,8 @@ def trainQNetwork(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights
                             x[1] * Y_DISCRETE) + X_DISCRETE * Y_DISCRETE * int(x[2] * 4)], device=device)
 
                 new_controls_state, thr = perform_discrete_action(action, q_trainer.hc, frequency, thr)
-                new_state = utils.screen.get_game_screen(q_trainer.screen).unsqueeze_(0).sum(1, keepdim=True) / 3.0
-                score, acc = utils.OCR.get_score_acc(q_trainer.screen, q_trainer.score_ocr, q_trainer.acc_ocr, wndw)
+                new_state = utils.screen.get_game_screen(env.screen).unsqueeze_(0).sum(1, keepdim=True) / 3.0
+                score, acc = utils.OCR.get_score_acc(env.screen, env.score_ocr, env.acc_ocr, wndw)
 
                 if (step < 15 and score == -1) or (score - previous_score > 5 * (previous_score + 100)):
                     score = previous_score
@@ -226,12 +227,12 @@ def trainQNetwork(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights
         q_trainer.plotter.fig.savefig('average_loss' + str(episode_nb-1) + '.png')
         q_trainer.avg_reward_plotter.fig.savefig('average_reward' + str(episode_nb-1) + '.png')
 
-    q_trainer.screen.stop()
+    env.screen.stop()
     utils.osu_routines.stop_osu(process)
 
 
 if __name__ == '__main__':
     weights_path = './weights/q_net_fubuki guysReboot_12-12-2020-210.pt'
     save_name = 'reboot_13-12-2020-'
-    trainQNetwork(400, LEARNING_RATE, evaluation=False, load_weights=None, beatmap_name="fubuki guys", star=2,
+    trainQNetwork(1, LEARNING_RATE, evaluation=False, load_weights=None, beatmap_name="fubuki guys", star=2,
                   save_name=save_name, batch_size=BATCH_SIZE)

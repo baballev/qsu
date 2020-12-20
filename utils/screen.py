@@ -11,6 +11,8 @@ def init_screen(capture_output="pytorch_float_gpu"):
     print('Initiating screen capture.')
     capturer = d3dshot.create(capture_output=capture_output, frame_buffer_size=5)
     print(capturer.display)
+    print('Game Region capture size:')
+    print(get_game_screen(capturer, skip_pixels=1).shape)
     return capturer
 
 
@@ -22,8 +24,8 @@ def get_screen_region(capturer, region):
     return capturer.screenshot(region=region).permute(2, 0, 1)
 
 
-def get_game_screen(capturer):
-    return capturer.screenshot(region=GAME_REGION).permute(2, 0, 1)[:, ::4, ::4]  # Divide each size by 4
+def get_game_screen(capturer, skip_pixels=4):
+    return capturer.screenshot(region=GAME_REGION).permute(2, 0, 1)[:, ::skip_pixels, ::skip_pixels]  # Divide each size by skip_pixels
 
 
 def save_screen(capturer, output_dir, output_name, region=WINDOW_REGION):
