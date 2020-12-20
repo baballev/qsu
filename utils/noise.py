@@ -47,9 +47,13 @@ class NormalActionNoise(ActionNoise):
     def __call__(self):
         return torch.clamp(self.sigma * torch.randn(3).to(device) + self.mu, self.min_val, self.max_val)
 
-    def __repr__(self):
-        return 'NormalActionNoise(mu={}, sigma={})'.format(self.mu, self.sigma)
 
+class OsuDiscreteNoise(NormalActionNoise):
+    def __init__(self, mu, sigma, min_val, max_val):
+        super(OsuDiscreteNoise, self).__init__(mu, sigma, min_val, max_val)
+
+    def __call__(self):
+        return torch.cat([torch.clamp(self.sigma * torch.randn(2).to(device) + self.mu, self.min_val, self.max_val), torch.rand(1).to(device)])
 
 # Based on http://math.stackexchange.com/questions/1287634/implementing-ornstein-uhlenbeck-in-matlab
 class OrnsteinUhlenbeckActionNoise(ActionNoise):
