@@ -238,6 +238,15 @@ def shut_annoying_window():
     return
 
 
+def relocate():
+    hc = pyclick.HumanClicker()
+    time.sleep(0.1)
+    hc.move((404, 312), 0.5)
+    time.sleep(0.1)
+    hc.click()
+    return
+
+
 ## DEBUG
 if __name__ == '__main__':
     process = start_osu()

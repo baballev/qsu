@@ -103,26 +103,15 @@ def trainQNetwork(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights
     if evaluation:
         learning_rate = 0.0
 
-    env = environment.OsuEnv(X_DISCRETE, Y_DISCRETE, WIDTH, HEIGHT, STACK_SIZE)
+    env = environment.OsuEnv(X_DISCRETE, Y_DISCRETE, WIDTH, HEIGHT, STACK_SIZE, star=star, beatmap_name=beatmap_name, no_fail=True)
     q_trainer = QTrainer(env, batch_size=batch_size, lr=learning_rate, load_weights=load_weights)
-
-    # Osu routine
-    process, wndw = utils.osu_routines.start_osu()
-    utils.osu_routines.move_to_songs(star=star)
-    if beatmap_name is not None:
-        utils.osu_routines.select_beatmap(beatmap_name)
-    utils.osu_routines.enable_nofail()
 
     episodes_reward = 0.0
     episode_average_reward = 0.0
     c = 0
     k = 0
     for i in range(episode_nb):
-        if beatmap_name is not None:
-            utils.osu_routines.launch_selected_beatmap()
-        else:
-            utils.osu_routines.launch_random_beatmap()
-        time.sleep(0.5)
+        env.launch_episode()
         previous_score = torch.tensor(0.0, device=device)
         previous_acc = torch.tensor(100.0, device=device)
         controls_state = torch.tensor([[0.5, 0.5, 0.0, 0.0]], device=device)
@@ -147,7 +136,7 @@ def trainQNetwork(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights
 
                 new_controls_state, thr = perform_discrete_action(action, q_trainer.hc, frequency, thr)
                 new_state = utils.screen.get_game_screen(env.screen).unsqueeze_(0).sum(1, keepdim=True) / 3.0
-                score, acc = utils.OCR.get_score_acc(env.screen, env.score_ocr, env.acc_ocr, wndw)
+                score, acc = utils.OCR.get_score_acc(env.screen, env.score_ocr, env.acc_ocr, env.window)
 
                 if (step < 15 and score == -1) or (score - previous_score > 5 * (previous_score + 100)):
                     score = previous_score
@@ -158,8 +147,6 @@ def trainQNetwork(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights
                 if done:
                     new_state = None
                 else:
-                    # t = torch.squeeze(trainer.critic(state, controls_state, action))
-                    # print(t)
                     th = Thread(target=q_trainer.memory.push,
                                 args=(state, action, reward, new_state, controls_state, new_controls_state))
                     th.start()
@@ -227,8 +214,7 @@ def trainQNetwork(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights
         q_trainer.plotter.fig.savefig('average_loss' + str(episode_nb-1) + '.png')
         q_trainer.avg_reward_plotter.fig.savefig('average_reward' + str(episode_nb-1) + '.png')
 
-    env.screen.stop()
-    utils.osu_routines.stop_osu(process)
+    env.stop()
 
 
 if __name__ == '__main__':

@@ -38,6 +38,7 @@ class LivePlot:
         self.t = 0
         self.curve = None
         self.text = None
+        utils.osu_routines.relocate()
 
     def step(self, reward):
         #print(reward)
