@@ -105,18 +105,18 @@ def trainQNetwork(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights
 
         episode_average_reward += episode_reward
         q_trainer.avg_reward_plotter.step(episode_reward)
-        if i > 0 and i % 30 == 0:
+        if i > 0 and i % 50 == 0:
             q_trainer.avg_reward_plotter.fit()
         q_trainer.avg_reward_plotter.show()
 
-        if i % 100 == 0:
+        if i % 250 == 0:
             q_trainer.plotter.fig.savefig('average_loss' + str(i) + '.png')
             q_trainer.avg_reward_plotter.fig.savefig('episode_reward' + str(i) + '.png')
 
         if k % TARGET_UPDATE == 0:
             q_trainer.target_q_network.load_state_dict(q_trainer.q_network.state_dict())
 
-        if i % 30 == 0 and i > 0:
+        if i % 100 == 0 and i > 0:
             print('Mean reward over last 10 episodes: ')
             print(episode_average_reward / 10)
 
@@ -126,6 +126,7 @@ def trainQNetwork(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights
             else:
                 tmp = save_name
             q_trainer.save_model(tmp, num=i)
+            q_trainer.memory.save('./memory.pck')
 
     if (episode_nb - 1) % 5 != 0:
         if beatmap_name is not None:
@@ -141,6 +142,6 @@ def trainQNetwork(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights
 
 if __name__ == '__main__':
     weights_path = './weights/q_net_fubuki guysReboot_12-12-2020-210.pt'
-    save_name = 'reboot_13-12-2020-'
-    trainQNetwork(25, LEARNING_RATE, evaluation=False, load_weights=None, beatmap_name="burn", star=3,
+    save_name = '_20-12-2020-'
+    trainQNetwork(5000, LEARNING_RATE, evaluation=False, load_weights=None, beatmap_name="kanashii", star=2,
                   save_name=save_name, batch_size=BATCH_SIZE)

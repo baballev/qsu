@@ -1,6 +1,7 @@
 from collections import namedtuple
 import random
 import torch
+import pickle
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -30,6 +31,9 @@ class ReplayMemory(object):
         c_s = torch.stack([a[4] for a in batch])
         c_s1 = torch.stack([a[5] for a in batch])
         return s, a, r, s1, c_s, c_s1
+
+    def save(self, path):
+        pickle.dump(self, open(path, 'wb'))
 
     def __len__(self):
         return len(self.memory)

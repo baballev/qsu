@@ -68,7 +68,7 @@ class OsuEnv(gym.Env):
             acc = self.previous_acc
         done = (score == -1)
         #print(self.history[-1, 1, 1])
-        if self.history[-1, 1, 1] > 0.0834 and steps > 15:
+        if self.history[-1, 1, 1] > 0.0834 and steps > 25:
             done = True
             reward = torch.tensor(-1.0, device=device)
         else:
@@ -120,15 +120,12 @@ class OsuEnv(gym.Env):
 
     def get_reward(self, score, acc, step):
         if acc > self.previous_acc:
-            bonus = torch.tensor(1.0, device=device)
+            bonus = torch.tensor(0.5, device=device)
         elif acc < self.previous_acc:
-            bonus = torch.tensor(-1.0, device=device)
+            bonus = torch.tensor(-0.3, device=device)
         else:
-            if acc < 0.2 + 0.1 * (step // 500):
-                bonus = torch.tensor(-0.3, device=device)
-            else:
-                bonus = torch.tensor(0.0, device=device)
-        return torch.clamp(torch.log10(max((score - self.previous_score),
+            bonus = torch.tensor(0.01, device=device)
+        return torch.clamp(0.1*torch.log10(max((score - self.previous_score),
                                            torch.tensor(1.0, device=device))) + bonus, -1, 1)
 
     def perform_discrete_action(self, action, human_clicker, dt=0.08):
@@ -154,7 +151,6 @@ class OsuEnv(gym.Env):
         y = y_disc * self.discrete_factor + 54 + 26  # + randint(-DISCRETE_FACTOR // 3, DISCRETE_FACTOR // 3)
 
         curve = pyclick.HumanCurve(pyautogui.position(), (x, y), targetPoints=10)  # TODO: ACTION BLOQUANTE?
-
         if self.thread is not None:
             self.thread.join()
         self.thread = Thread(target=threaded_mouse_move, args=(x, y, dt, human_clicker, curve)) # TODO: TRY TO UN-THREAD the action
