@@ -64,10 +64,9 @@ def trainQNetwork(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights
         controls_state, state = env.reset()
         env.launch_episode()
 
-        thread, thr, thready_mercury = None, None, None
+        thread = None
         start = time.time()
 
-        action = torch.tensor(0, device=device)
         for step in range(MAX_STEPS):
             k += 1
             with torch.no_grad():

@@ -47,6 +47,7 @@ class OsuEnv(gym.Env):
         self.history = None
         self.previous_score = None
         self.previous_acc = None
+        self.thread = None
 
         utils.osu_routines.move_to_songs(star=star)
         if beatmap_name is not None:
@@ -55,11 +56,9 @@ class OsuEnv(gym.Env):
             utils.osu_routines.enable_nofail()
 
     def step(self, action, step):
-        #time.sleep(0.05)  # Skip 3 frames if the game was at 60 FPS
-        new_controls_state, thr = self.perform_discrete_action(action, self.hc, dt=0.05)
+        new_controls_state = self.perform_discrete_action(action, self.hc)
         for i in range(len(self.history)-1):
             self.history[i] = self.history[i+1]
-        thr.join()
         # TODO: maybe try threading every actions that can be if i need to win some time.
         self.history[-1] = utils.screen.get_game_screen(self.screen, skip_pixels=self.skip_pixels).sum(0, keepdim=True) / 3.0
 
@@ -120,7 +119,7 @@ class OsuEnv(gym.Env):
         return torch.clamp(torch.log10(max((score - self.previous_score),
                                            torch.tensor(1.0, device=device))) + bonus, -1, 1)
 
-    def perform_discrete_action(self, action, human_clicker, dt=0.05):
+    def perform_discrete_action(self, action, human_clicker, dt=0.08):
         click, xy = divmod(action.item(), self.discrete_width * self.discrete_height)
         y_disc, x_disc = divmod(xy, self.discrete_width)
         if click == 0:
@@ -142,14 +141,13 @@ class OsuEnv(gym.Env):
         x = x_disc * self.discrete_factor + 145  # + randint(-DISCRETE_FACTOR // 3, DISCRETE_FACTOR // 3)
         y = y_disc * self.discrete_factor + 54 + 26  # + randint(-DISCRETE_FACTOR // 3, DISCRETE_FACTOR // 3)
 
-        curve = pyclick.HumanCurve(pyautogui.position(), (x, y), targetPoints=5)  # TODO: ACTION BLOQUANTE?
-        '''
-        if thre is not None:
-            thre.join()
-        '''
-        thr = Thread(target=threaded_mouse_move, args=(x, y, dt, human_clicker, curve)) # TODO: TRY TO UN-THREAD the action
-        thr.start()
-        return torch.tensor([[left, right, x / self.width, y / self.height]], device=device), thr
+        curve = pyclick.HumanCurve(pyautogui.position(), (x, y), targetPoints=15)  # TODO: ACTION BLOQUANTE?
+
+        if self.thread is not None:
+            self.thread.join()
+        self.thread = Thread(target=threaded_mouse_move, args=(x, y, dt, human_clicker, curve)) # TODO: TRY TO UN-THREAD the action
+        self.thread.start()
+        return torch.tensor([[left, right, x / self.width, y / self.height]], device=device)
 
 
 
