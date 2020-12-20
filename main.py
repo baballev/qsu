@@ -26,8 +26,8 @@ BATCH_SIZE = 20
 LEARNING_RATE = 0.00001
 GAMMA = 0.999
 MAX_STEPS = 25000
-WIDTH = 735
-HEIGHT = 546
+WIDTH = 878
+HEIGHT = 600
 STACK_SIZE = 4
 
 EPS_START = 0.9
@@ -38,6 +38,8 @@ TARGET_UPDATE = 10
 DISCRETE_FACTOR = 10
 X_DISCRETE = 685 // DISCRETE_FACTOR + 1
 Y_DISCRETE = (560 - 54) // DISCRETE_FACTOR + 1
+
+PIXEL_SKIP = 4
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -104,7 +106,7 @@ def trainQNetwork(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights
         learning_rate = 0.0
 
     env = environment.OsuEnv(X_DISCRETE, Y_DISCRETE, WIDTH, HEIGHT, STACK_SIZE, star=star, beatmap_name=beatmap_name, no_fail=True)
-    q_trainer = QTrainer(env, batch_size=batch_size, lr=learning_rate, load_weights=load_weights)
+    q_trainer = QTrainer(env, batch_size=batch_size, lr=learning_rate, load_weights=load_weights, skip_pixels=PIXEL_SKIP)
 
     episodes_reward = 0.0
     episode_average_reward = 0.0
@@ -115,7 +117,7 @@ def trainQNetwork(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights
         previous_score = torch.tensor(0.0, device=device)
         previous_acc = torch.tensor(100.0, device=device)
         controls_state = torch.tensor([[0.5, 0.5, 0.0, 0.0]], device=device)
-        state = utils.screen.get_game_screen(env.screen).unsqueeze_(0).sum(1, keepdim=True) / 3.0
+        state = utils.screen.get_game_screen(env.screen, skip_pixels=PIXEL_SKIP).unsqueeze_(0).sum(1, keepdim=True) / 3.0
         thread, thr, thready_mercury = None, None, None
         start = time.time()
         for step in range(MAX_STEPS):
@@ -135,7 +137,7 @@ def trainQNetwork(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights
                             x[1] * Y_DISCRETE) + X_DISCRETE * Y_DISCRETE * int(x[2] * 4)], device=device)
 
                 new_controls_state, thr = perform_discrete_action(action, q_trainer.hc, frequency, thr)
-                new_state = utils.screen.get_game_screen(env.screen).unsqueeze_(0).sum(1, keepdim=True) / 3.0
+                new_state = utils.screen.get_game_screen(env.screen, skip_pixels=PIXEL_SKIP).unsqueeze_(0).sum(1, keepdim=True) / 3.0
                 score, acc = utils.OCR.get_score_acc(env.screen, env.score_ocr, env.acc_ocr, env.window)
 
                 if (step < 15 and score == -1) or (score - previous_score > 5 * (previous_score + 100)):
@@ -220,5 +222,5 @@ def trainQNetwork(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights
 if __name__ == '__main__':
     weights_path = './weights/q_net_fubuki guysReboot_12-12-2020-210.pt'
     save_name = 'reboot_13-12-2020-'
-    trainQNetwork(1, LEARNING_RATE, evaluation=False, load_weights=None, beatmap_name="fubuki guys", star=2,
+    trainQNetwork(1, LEARNING_RATE, evaluation=False, load_weights=None, beatmap_name="rampage", star=2,
                   save_name=save_name, batch_size=BATCH_SIZE)

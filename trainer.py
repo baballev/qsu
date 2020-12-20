@@ -125,15 +125,15 @@ class Trainer:
 
 
 class QTrainer:
-    def __init__(self, env, batch_size=5, lr=0.0001, gamma=0.999, load_weights=None):
+    def __init__(self, env, batch_size=5, lr=0.0001, gamma=0.999, load_weights=None, skip_pixels=4):
         self.batch_size = batch_size
         self.lr = lr
         self.gamma = gamma
 
         self.env = env
 
-        self.q_network = models.QNetwork(action_dim=env.action_space.n).to(device)
-        self.target_q_network = models.QNetwork(action_dim=env.action_space.n).to(device)
+        self.q_network = models.QNetwork(height=env.observation_space.shape[0]//skip_pixels, width=env.observation_space.shape[1]//skip_pixels, action_dim=env.action_space.n).to(device)
+        self.target_q_network = models.QNetwork(height=env.observation_space.shape[0]//skip_pixels, width=env.observation_space.shape[1]//skip_pixels, action_dim=env.action_space.n).to(device)
         print(self.q_network)
         if load_weights is not None:
             self.load_models(load_weights)

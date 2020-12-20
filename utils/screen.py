@@ -4,7 +4,7 @@ import time
 import utils.osu_routines
 
 WINDOW_REGION = (0, 26, 1024, 626)
-GAME_REGION = (145, 80, 880, 626)
+GAME_REGION = (2, 26, 880, 626)
 
 
 def init_screen(capture_output="pytorch_float_gpu"):
