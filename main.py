@@ -6,11 +6,6 @@ import pyautogui
 import gc
 from threading import Thread
 
-import utils.screen
-import utils.osu_routines
-import utils.OCR
-import utils.noise
-import utils.info_plot
 import environment
 from trainer import QTrainer
 
@@ -21,7 +16,7 @@ pyautogui.MINIMUM_SLEEP = 0.0
 pyautogui.PAUSE = 0.0
 
 BATCH_SIZE = 20
-LEARNING_RATE = 0.00001
+LEARNING_RATE = 0.0001
 GAMMA = 0.999
 MAX_STEPS = 25000
 WIDTH = 878
@@ -31,7 +26,7 @@ STACK_SIZE = 4
 EPS_START = 0.9
 EPS_END = 0.1
 EPS_DECAY = 300000
-TARGET_UPDATE = 10
+TARGET_UPDATE = 5000  # Number of steps
 
 DISCRETE_FACTOR = 10
 X_DISCRETE = 685 // DISCRETE_FACTOR + 1
@@ -53,21 +48,20 @@ def trainQNetwork(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights
     if evaluation:
         learning_rate = 0.0
 
-    env = environment.OsuEnv(X_DISCRETE, Y_DISCRETE, DISCRETE_FACTOR, WIDTH, HEIGHT, STACK_SIZE, star=star, beatmap_name=beatmap_name, no_fail=True, skip_pixels=PIXEL_SKIP)
+    env = environment.OsuEnv(X_DISCRETE, Y_DISCRETE, DISCRETE_FACTOR, WIDTH, HEIGHT, STACK_SIZE, star=star, beatmap_name=beatmap_name, no_fail=False, skip_pixels=PIXEL_SKIP)
     q_trainer = QTrainer(env, batch_size=batch_size, lr=learning_rate, load_weights=load_weights)
 
-    episodes_reward = 0.0
     episode_average_reward = 0.0
-    c = 0
     k = 0
+    reward = torch.tensor(0.0, device=device)
     for i in range(episode_nb):
-        controls_state, state = env.reset()
-        env.launch_episode()
+        controls_state, state = env.reset(reward)
+        env.launch_episode(reward)
 
+        episode_reward = 0.0
         thread = None
         start = time.time()
-
-        for step in range(MAX_STEPS):
+        for steps in range(MAX_STEPS):
             k += 1
             with torch.no_grad():
                 if evaluation:  # Choose greedy policy if tests
@@ -82,7 +76,7 @@ def trainQNetwork(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights
                         x = q_trainer.noise()  # Normal distribution mean=0.5, clipped in [0, 1[ & uniform distrib
                         action = torch.tensor([int(x[0] * X_DISCRETE) + X_DISCRETE * int(
                             x[1] * Y_DISCRETE) + X_DISCRETE * Y_DISCRETE * int(x[2] * 4)], device=device)
-                new_state, new_controls_state, reward, done = env.step(action, step)
+                new_state, new_controls_state, reward, done = env.step(action, steps)
                 if done:
                     new_state = None
                 else:
@@ -97,39 +91,36 @@ def trainQNetwork(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights
 
             state = new_state
             controls_state = new_controls_state
+            episode_reward += reward
 
-            episode_average_reward += reward
-            if k % 200 == 0:
-                tmp = episode_average_reward / 200
-                q_trainer.avg_reward_plotter.step(tmp)
-                q_trainer.avg_reward_plotter.show()
-                episodes_reward += tmp
-                c += 1
-                episode_average_reward = 0.0
             if done:
                 break
+
         end = time.time()
         delta_t = end - start
-        print(str(step) + ' time steps in ' + str(delta_t) + ' s.')
-        print(str(step / delta_t) + ' time_steps per second.')
+        print(str(steps) + ' time steps in ' + str(delta_t) + ' s.')
+        print(str(steps / delta_t) + ' time_steps per second.')
+
         gc.collect()
 
-        q_trainer.avg_reward_plotter.fit()
+        episode_average_reward += episode_reward
+        q_trainer.avg_reward_plotter.step(episode_reward)
+        if i > 0 and i % 30 == 0:
+            q_trainer.avg_reward_plotter.fit()
         q_trainer.avg_reward_plotter.show()
 
-        if i % 50 == 0:
+        if i % 100 == 0:
             q_trainer.plotter.fig.savefig('average_loss' + str(i) + '.png')
-            q_trainer.avg_reward_plotter.fig.savefig('average_reward' + str(i) + '.png')
+            q_trainer.avg_reward_plotter.fig.savefig('episode_reward' + str(i) + '.png')
 
-        if i % TARGET_UPDATE == 0:
+        if k % TARGET_UPDATE == 0:
             q_trainer.target_q_network.load_state_dict(q_trainer.q_network.state_dict())
 
-        if i % 10 == 0 and i > 0:
+        if i % 30 == 0 and i > 0:
             print('Mean reward over last 10 episodes: ')
-            print(episodes_reward / c)
+            print(episode_average_reward / 10)
 
-            c = 0
-            episodes_reward = 0.0
+            episode_average_reward = 0.0
             if beatmap_name is not None:
                 tmp = beatmap_name + save_name
             else:
@@ -137,8 +128,6 @@ def trainQNetwork(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights
             q_trainer.save_model(tmp, num=i)
 
     if (episode_nb - 1) % 5 != 0:
-        print('Mean reward over last episodes: ')
-        print(episodes_reward / c)
         if beatmap_name is not None:
             tmp = beatmap_name + save_name
         else:
@@ -153,5 +142,5 @@ def trainQNetwork(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights
 if __name__ == '__main__':
     weights_path = './weights/q_net_fubuki guysReboot_12-12-2020-210.pt'
     save_name = 'reboot_13-12-2020-'
-    trainQNetwork(1, LEARNING_RATE, evaluation=False, load_weights=None, beatmap_name="ranbu", star=2,
+    trainQNetwork(25, LEARNING_RATE, evaluation=False, load_weights=None, beatmap_name="burn", star=3,
                   save_name=save_name, batch_size=BATCH_SIZE)

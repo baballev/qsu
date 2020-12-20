@@ -55,29 +55,40 @@ class OsuEnv(gym.Env):
         if no_fail:
             utils.osu_routines.enable_nofail()
 
-    def step(self, action, step):
+    def step(self, action, steps):
         new_controls_state = self.perform_discrete_action(action, self.hc)
         for i in range(len(self.history)-1):
             self.history[i] = self.history[i+1]
         # TODO: maybe try threading every actions that can be if i need to win some time.
         self.history[-1] = utils.screen.get_game_screen(self.screen, skip_pixels=self.skip_pixels).sum(0, keepdim=True) / 3.0
-
         score, acc = utils.OCR.get_score_acc(self.screen, self.score_ocr, self.acc_ocr, self.window)
-        if (step < 15 and score == -1) or (score - self.previous_score > 5 * (self.previous_score + 100)):
+        if (steps < 15 and score == -1) or (score - self.previous_score > 5 * (self.previous_score + 100)):
             score = self.previous_score
-        if step < 15 and acc == -1:
+        if steps < 15 and acc == -1:
             acc = self.previous_acc
         done = (score == -1)
-        reward = self.get_reward(score, acc, step)  # TODO: remove step?
+        #print(self.history[-1, 1, 1])
+        if self.history[-1, 1, 1] > 0.0834 and steps > 15:
+            done = True
+            reward = torch.tensor(-1.0, device=device)
+        else:
+            reward = self.get_reward(score, acc, steps)  # TODO: remove step?
         self.previous_acc = acc
         self.previous_score = score
 
         return self.history.unsqueeze(0), new_controls_state, reward, done
 
-    def reset(self):
+    def reset(self, reward):
         if not self.first:
-            utils.osu_routines.return_to_beatmap()
+            if reward != -1.0:
+                utils.osu_routines.return_to_beatmap()
+            else:
+                if self.beatmap_name is not None:
+                    utils.osu_routines.restart()
+                else:
+                    utils.osu_routines.return_to_beatmap2()
         self.first = False
+
         pyautogui.mouseUp(button='right')
         pyautogui.mouseUp(button='left')
         state = utils.screen.get_game_screen(self.screen, skip_pixels=self.skip_pixels).sum(0, keepdim=True) / 3.0
@@ -91,22 +102,23 @@ class OsuEnv(gym.Env):
     def render(self, mode='human', close=False):
         pass  # TODO
 
-    def launch_episode(self):
-        if self.beatmap_name is not None:
-            utils.osu_routines.launch_selected_beatmap()
-        else:
-            utils.osu_routines.launch_random_beatmap()
+    def launch_episode(self, reward):
+        if reward != -1:
+            if self.beatmap_name is not None:
+                utils.osu_routines.launch_selected_beatmap()
+            else:
+                utils.osu_routines.launch_random_beatmap()
         time.sleep(0.5)
 
     def change_star(self, star=2):
         pass # ToDo
 
     def stop(self):
-        self.reset()
+        self.reset(0.5)
         self.screen.stop()
         utils.osu_routines.stop_osu(self.process)
 
-    def get_reward(self, score, acc, step): # TODO
+    def get_reward(self, score, acc, step):
         if acc > self.previous_acc:
             bonus = torch.tensor(1.0, device=device)
         elif acc < self.previous_acc:
@@ -141,7 +153,7 @@ class OsuEnv(gym.Env):
         x = x_disc * self.discrete_factor + 145  # + randint(-DISCRETE_FACTOR // 3, DISCRETE_FACTOR // 3)
         y = y_disc * self.discrete_factor + 54 + 26  # + randint(-DISCRETE_FACTOR // 3, DISCRETE_FACTOR // 3)
 
-        curve = pyclick.HumanCurve(pyautogui.position(), (x, y), targetPoints=15)  # TODO: ACTION BLOQUANTE?
+        curve = pyclick.HumanCurve(pyautogui.position(), (x, y), targetPoints=10)  # TODO: ACTION BLOQUANTE?
 
         if self.thread is not None:
             self.thread.join()

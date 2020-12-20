@@ -139,13 +139,13 @@ class QTrainer:
             self.load_models(load_weights)
         self.optimizer = torch.optim.RMSprop(self.q_network.parameters(), self.lr)
 
-        self.memory = ReplayMemory(25000) # TODO: Increase
+        self.memory = ReplayMemory(250000) # TODO: Increase
 
         self.noise = utils.noise.OsuDiscreteNoise(mu=torch.tensor(0.5, device=device), sigma=torch.tensor(0.15, device=device), min_val=0.0, max_val=0.999)
         #self.noise = utils.noise.OrnsteinUhlenbeckActionNoise(mu=torch.tensor([0.5, 0.5, 0.5], device=device), sigma=0.15, theta=0.25, x0=torch.tensor([0.5, 0.5, 0.5], device=device), min_val=0.0, max_val=0.9999)
 
         self.plotter = utils.info_plot.LivePlot(min_y=0, max_y=5.0, num_points=500, y_axis='Average loss')
-        self.avg_reward_plotter = utils.info_plot.LivePlot(min_y=-0.3, max_y=2.5, window_x=1270, num_points=500, y_axis='Average reward')
+        self.avg_reward_plotter = utils.info_plot.LivePlot(min_y=-0.3, max_y=2.5, window_x=1270, num_points=500, y_axis='Episode reward', x_axis='Number of episodes')
         self.running_loss = 0.0
         self.running_counter = 0
 
