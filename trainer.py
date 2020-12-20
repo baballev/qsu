@@ -125,15 +125,15 @@ class Trainer:
 
 
 class QTrainer:
-    def __init__(self, env, batch_size=5, lr=0.0001, gamma=0.999, load_weights=None, skip_pixels=4):
+    def __init__(self, env, batch_size=5, lr=0.0001, gamma=0.999, load_weights=None):
         self.batch_size = batch_size
         self.lr = lr
         self.gamma = gamma
 
         self.env = env
 
-        self.q_network = models.QNetwork(height=env.observation_space.shape[0]//skip_pixels, width=env.observation_space.shape[1]//skip_pixels, action_dim=env.action_space.n).to(device)
-        self.target_q_network = models.QNetwork(height=env.observation_space.shape[0]//skip_pixels, width=env.observation_space.shape[1]//skip_pixels, action_dim=env.action_space.n).to(device)
+        self.q_network = models.QNetwork(height=env.height//env.skip_pixels, width=env.width//env.skip_pixels, action_dim=env.action_space.n, channels=env.stack_size).to(device)
+        self.target_q_network = models.QNetwork(height=env.height//env.skip_pixels, width=env.width//env.skip_pixels, action_dim=env.action_space.n, channels=env.stack_size).to(device)
         print(self.q_network)
         if load_weights is not None:
             self.load_models(load_weights)
@@ -141,7 +141,6 @@ class QTrainer:
 
         self.memory = ReplayMemory(25000) # TODO: Increase
 
-        self.hc = pyclick.HumanClicker()
         self.noise = utils.noise.OsuDiscreteNoise(mu=torch.tensor(0.5, device=device), sigma=torch.tensor(0.15, device=device), min_val=0.0, max_val=0.999)
         #self.noise = utils.noise.OrnsteinUhlenbeckActionNoise(mu=torch.tensor([0.5, 0.5, 0.5], device=device), sigma=0.15, theta=0.25, x0=torch.tensor([0.5, 0.5, 0.5], device=device), min_val=0.0, max_val=0.9999)
 

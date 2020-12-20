@@ -124,7 +124,7 @@ class Critic(nn.Module):
 
 class QNetwork(nn.Module):
 
-    def __init__(self, height=137, width=184, channels=1, action_dim=7400, control_dim=4):
+    def __init__(self, height=137, width=184, channels=4, action_dim=7400, control_dim=4):
         super(QNetwork, self).__init__()
         self.width = width
         self.height = height

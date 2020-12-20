@@ -111,7 +111,7 @@ def move_to_songs(star=1):
     time.sleep(0.4)
     pyautogui.scroll(-10)
     time.sleep(0.5)
-    hc.move((730, 110 + star * 60), 1)
+    hc.move((630, 110 + (star-1) * 60), 1)
     time.sleep(0.5)
     hc.click()
     time.sleep(0.4)
@@ -240,7 +240,7 @@ def shut_annoying_window():
 
 def relocate():
     hc = pyclick.HumanClicker()
-    time.sleep(0.1)
+    time.sleep(0.5)
     hc.move((404, 312), 0.5)
     time.sleep(0.1)
     hc.click()
