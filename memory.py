@@ -33,7 +33,9 @@ class ReplayMemory(object):
         return s, a, r, s1, c_s, c_s1
 
     def save(self, path):
-        pickle.dump(self, open(path, 'wb'))
+        f = open(path, 'wb')
+        pickle.dump(self, f)
+        f.close()
 
     def __len__(self):
         return len(self.memory)

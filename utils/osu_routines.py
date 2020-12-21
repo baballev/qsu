@@ -249,11 +249,13 @@ def relocate():
 
 def restart():
     hc = pyclick.HumanClicker()
-    time.sleep(1.9)
+    time.sleep(3)
     hc.move((500, 336), 1.0)
-    time.sleep(0.3)
+    time.sleep(1)
     hc.click()
     time.sleep(0.1)
+    hc.click()
+    time.sleep(0.2)
     return
 
 
@@ -263,6 +265,7 @@ def return_to_beatmap2():
     hc.move((515, 483), 0.9)
     time.sleep(0.3)
     hc.click()
+    time.sleep(0.25)
     return
 
 

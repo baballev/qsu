@@ -33,8 +33,8 @@ class OsuEnv(gym.Env):
         self.observation_space = spaces.Box(low=0, high=1, shape=(height, width, stack_size))
 
         self.screen = utils.screen.init_screen(capture_output="pytorch_float_gpu")
-        self.score_ocr = utils.OCR.init_OCR('./weights/OCR/OCR_score2.pt')
-        self.acc_ocr = utils.OCR.init_OCR('./weights/OCR/OCR_acc2.pt')
+        self.score_ocr = utils.OCR.init_OCR('./weights/OCR/OCR_score2.pt').to(device)
+        self.acc_ocr = utils.OCR.init_OCR('./weights/OCR/OCR_acc2.pt').to(device)
         self.process, self.window = utils.osu_routines.start_osu()
         self.hc = pyclick.HumanClicker()
 
@@ -120,11 +120,11 @@ class OsuEnv(gym.Env):
 
     def get_reward(self, score, acc, step):
         if acc > self.previous_acc:
-            bonus = torch.tensor(0.5, device=device)
+            bonus = torch.tensor(0.3, device=device)
         elif acc < self.previous_acc:
             bonus = torch.tensor(-0.3, device=device)
         else:
-            bonus = torch.tensor(0.01, device=device)
+            bonus = torch.tensor(0.1, device=device)
         return torch.clamp(0.1*torch.log10(max((score - self.previous_score),
                                            torch.tensor(1.0, device=device))) + bonus, -1, 1)
 
