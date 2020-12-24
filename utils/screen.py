@@ -13,6 +13,7 @@ def init_screen(capture_output="pytorch_float_gpu"):
     print(capturer.display)
     print('Game Region capture size:')
     print(get_game_screen(capturer, skip_pixels=1).shape)
+    print(get_game_screen(capturer, skip_pixels=4).shape)
     return capturer
 
 

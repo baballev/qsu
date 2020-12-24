@@ -62,13 +62,16 @@ class OsuEnv(gym.Env):
         for i in range(len(self.history)-1):
             self.history[i] = self.history[i+1]
         # TODO: maybe try threading every actions that can be if i need to win some time.
-        self.history[-1] = utils.screen.get_game_screen(self.screen, skip_pixels=self.skip_pixels).sum(0, keepdim=True) / 3.0
+        time.sleep(0.025)
+        th = Thread(target=self.threaded_screen_fetch)
+        th.start()
         score, acc = utils.OCR.get_score_acc(self.screen, self.score_ocr, self.acc_ocr, self.window)
         if (steps < 15 and score == -1) or (score - self.previous_score > 5 * (self.previous_score + 100)):
             score = self.previous_score
         if steps < 15 and acc == -1:
             acc = self.previous_acc
         done = (score == -1)
+        th.join()
         if self.history[-1, 1, 1] > 0.0834 and steps > 25:
             done = True
             reward = torch.tensor(-1.0, device=device)
@@ -163,7 +166,7 @@ class OsuEnv(gym.Env):
         return torch.clamp(0.1*torch.log10(max((score - self.previous_score),
                                            torch.tensor(1.0, device=device))) + bonus, -1, 1)
 
-    def perform_discrete_action(self, action, human_clicker, dt=0.08):
+    def perform_discrete_action(self, action, human_clicker, dt=0.05):
         click, xy = divmod(action.item(), self.discrete_width * self.discrete_height)
         y_disc, x_disc = divmod(xy, self.discrete_width)
         if click == 0:
@@ -185,12 +188,14 @@ class OsuEnv(gym.Env):
         x = x_disc * self.discrete_factor + 145  # + randint(-DISCRETE_FACTOR // 3, DISCRETE_FACTOR // 3)
         y = y_disc * self.discrete_factor + 54 + 26  # + randint(-DISCRETE_FACTOR // 3, DISCRETE_FACTOR // 3)
 
-        curve = pyclick.HumanCurve(pyautogui.position(), (x, y), targetPoints=10)  # TODO: ACTION BLOQUANTE?
+        curve = pyclick.HumanCurve(pyautogui.position(), (x, y), targetPoints=10)
         if self.thread is not None:
             self.thread.join()
-        self.thread = Thread(target=threaded_mouse_move, args=(x, y, dt, human_clicker, curve)) # TODO: TRY TO UN-THREAD the action
+        self.thread = Thread(target=threaded_mouse_move, args=(x, y, dt, human_clicker, curve))
         self.thread.start()
         return torch.tensor([[left, right, x / self.width, y / self.height]], device=device)
 
+    def threaded_screen_fetch(self):
+        self.history[-1] = utils.screen.get_game_screen(self.screen, skip_pixels=self.skip_pixels).sum(0, keepdim=True) / 3.0
 
 

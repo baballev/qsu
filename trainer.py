@@ -133,15 +133,15 @@ class QTrainer:
 
         self.env = env
 
-        self.q_network = models.QNetwork(height=env.height//env.skip_pixels, width=env.width//env.skip_pixels, action_dim=env.action_space.n, channels=env.stack_size).to(device)
-        self.target_q_network = models.QNetwork(height=env.height//env.skip_pixels, width=env.width//env.skip_pixels, action_dim=env.action_space.n, channels=env.stack_size).to(device)
+        self.q_network = models.QNetwork(action_dim=env.action_space.n, channels=env.stack_size).to(device)
+        self.target_q_network = models.QNetwork(action_dim=env.action_space.n, channels=env.stack_size).to(device)
         print(self.q_network)
         if load_weights is not None:
             self.load_models(load_weights)
         self.optimizer = torch.optim.RMSprop(self.q_network.parameters(), self.lr, eps=0.01, alpha=0.95)
 
         if load_memory is None:
-            self.memory = ReplayMemory(1000000) # TODO: Increase
+            self.memory = ReplayMemory(1000000) # TODO: Optimize memory
         else:
             self.memory = pickle.load(open(load_memory, 'rb'))
 

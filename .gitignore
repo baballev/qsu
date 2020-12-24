@@ -12,3 +12,4 @@ benchmark/
 memory.pck
 *.png
 statistics.pkl
+pyclick_modified/

@@ -124,7 +124,7 @@ class Critic(nn.Module):
 
 class QNetwork(nn.Module):
 
-    def __init__(self, height=137, width=184, channels=4, action_dim=7400, control_dim=4):
+    def __init__(self, height=150, width=220, channels=4, action_dim=7400, control_dim=4):
         super(QNetwork, self).__init__()
         self.width = width
         self.height = height
@@ -138,8 +138,8 @@ class QNetwork(nn.Module):
         def conv2d_size_out(size, kernel_size=5, stride=2):
             return (size - (kernel_size - 1) - 1) // stride + 1
 
-        convw = conv2d_size_out(conv2d_size_out(conv2d_size_out(width, kernel_size=8, stride=4), kernel_size=4), kernel_size=3)
-        convh = conv2d_size_out(conv2d_size_out(conv2d_size_out(height, kernel_size=8, stride=4), kernel_size=4), kernel_size=3)
+        convw = conv2d_size_out(conv2d_size_out(conv2d_size_out(width, kernel_size=8, stride=4), kernel_size=4, stride=2), kernel_size=3, stride=1)
+        convh = conv2d_size_out(conv2d_size_out(conv2d_size_out(height, kernel_size=8, stride=4), kernel_size=4, stride=2), kernel_size=3, stride=1)
 
         self.fc3 = nn.Linear(convh * convw * 64, 1024)
         self.fcc3 = nn.Linear(control_dim, 64)

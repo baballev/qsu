@@ -16,16 +16,16 @@ pyautogui.MINIMUM_SLEEP = 0.0
 pyautogui.PAUSE = 0.0
 
 BATCH_SIZE = 20
-LEARNING_RATE = 0.000001
+LEARNING_RATE = 0.0001
 GAMMA = 0.999
 MAX_STEPS = 25000
 WIDTH = 878
 HEIGHT = 600
 STACK_SIZE = 4
 
-EPS_START = 0.99
+EPS_START = 1.0
 EPS_END = 0.1
-EPS_DECAY = 100000
+EPS_DECAY = 1000000
 TARGET_UPDATE = 10000  # Number of steps
 
 DISCRETE_FACTOR = 10
@@ -149,6 +149,6 @@ def trainQNetwork(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights
 if __name__ == '__main__':
     weights_path = './weights/q_net__21-12-2020-14.pt'
     memory_path = './memory.pck'
-    save_name = '_21-12-2020-'
-    trainQNetwork(50, LEARNING_RATE, evaluation=True, load_weights=weights_path, beatmap_name=None, star=2,
-                  save_name=save_name, batch_size=BATCH_SIZE, human_off_policy=False)
+    save_name = '_24-12-2020-'
+    trainQNetwork(50, LEARNING_RATE, evaluation=False, load_weights=None, beatmap_name="sink", star=7,
+                  save_name=save_name, batch_size=BATCH_SIZE, human_off_policy=False, no_fail=True)
