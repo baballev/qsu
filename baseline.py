@@ -444,7 +444,17 @@ def dqn_learning(
 
 
 if __name__ == '__main__':
+    '''
     env = gym.make('SpaceInvaders-v0')
     schedule = LinearSchedule(1000000, 0.1)
     dqn_learning(env, QNetwork, schedule, stopping_criterion=50000000)
-
+    '''
+    f = open('statistics.pkl', 'rb')
+    stat = pickle.load(f)
+    f.close()
+    x = np.linspace(len(stat["mean_episode_rewards"]), 0, len(stat["mean_episode_rewards"]))
+    import matplotlib.pyplot as plt
+    fig = plt.figure()
+    ax = plt.subplot(111)
+    ax.plot(x, np.array(stat["mean_episode_rewards"][::-1]))
+    plt.show()
