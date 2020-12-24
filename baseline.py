@@ -245,29 +245,7 @@ class QNetwork(nn.Module):
         return self.fc4(x)
 
 
-class LinearSchedule(object):
-    def __init__(self, schedule_timesteps, final_p, initial_p=1.0):
-        """Linear interpolation between initial_p and final_p over
-        schedule_timesteps. After this many timesteps pass final_p is
-        returned.
-        Parameters
-        ----------
-        schedule_timesteps: int
-            Number of timesteps for which to linearly anneal initial_p
-            to final_p
-        initial_p: float
-            initial output value
-        final_p: float
-            final output value
-        """
-        self.schedule_timesteps = schedule_timesteps
-        self.final_p            = final_p
-        self.initial_p          = initial_p
 
-    def value(self, t):
-        """See Schedule.value"""
-        fraction  = min(float(t) / self.schedule_timesteps, 1.0)
-        return self.initial_p + fraction * (self.final_p - self.initial_p)
 
 
 def dqn_learning(
@@ -385,20 +363,13 @@ def dqn_learning(
 
             # Compute current Q value, q_func takes only state and output value for every state-action pair
             # We choose Q based on action taken.
-            #print(act_batch.shape)
-            #print(obs_batch.shape)
-            #print(act_batch.unsqueeze(1).shape)
             current_Q_values = Q(obs_batch).gather(1, act_batch.unsqueeze(1))
-            #print(current_Q_values.shape)
             # Compute next Q value based on which action gives max Q values
             # Detach variable from the current graph since we don't want gradients for next Q to propagated
             next_max_q = target_Q(next_obs_batch).detach().max(1)[0]
-            #print(next_max_q)
             next_Q_values = not_done_mask * next_max_q
-            #print(next_Q_values.shape)
             # Compute the target of the current Q values
             target_Q_values = rew_batch + (gamma * next_Q_values)
-            #print(target_Q_values.shape)
             # Compute Bellman error
             bellman_error = target_Q_values.unsqueeze(1) - current_Q_values
             #print(bellman_error.shape)

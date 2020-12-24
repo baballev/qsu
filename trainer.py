@@ -9,6 +9,7 @@ import utils.noise
 import utils.screen
 import utils.OCR
 import utils.info_plot
+import uitls.schedule
 from memory import ReplayMemory
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -126,7 +127,7 @@ class Trainer:
 
 
 class QTrainer:
-    def __init__(self, env, batch_size=5, lr=0.0001, gamma=0.999, load_weights=None, load_memory=None):
+    def __init__(self, env, batch_size=32, lr=0.0001, gamma=0.999, initial_p=1.0, end_p=0.05, decay_p=2000000, load_weights=None, load_memory=None):
         self.batch_size = batch_size
         self.lr = lr
         self.gamma = gamma
@@ -139,6 +140,8 @@ class QTrainer:
         if load_weights is not None:
             self.load_models(load_weights)
         self.optimizer = torch.optim.RMSprop(self.q_network.parameters(), self.lr, eps=0.01, alpha=0.95)
+        self.scheduler = utils.schedule.LinearSchedule(decay_p, end_p, initial_p)
+
 
         if load_memory is None:
             self.memory = ReplayMemory(1000000) # TODO: Optimize memory
@@ -146,12 +149,14 @@ class QTrainer:
             self.memory = pickle.load(open(load_memory, 'rb'))
 
         self.noise = utils.noise.OsuDiscreteNoise(mu=torch.tensor(0.5, device=device), sigma=torch.tensor(0.25, device=device), min_val=0.0, max_val=0.999)
-        #self.noise = utils.noise.OrnsteinUhlenbeckActionNoise(mu=torch.tensor([0.5, 0.5, 0.5], device=device), sigma=0.15, theta=0.25, x0=torch.tensor([0.5, 0.5, 0.5], device=device), min_val=0.0, max_val=0.9999)
 
         self.plotter = utils.info_plot.LivePlot(min_y=0, max_y=2.5, num_points=500, y_axis='Average loss')
         self.avg_reward_plotter = utils.info_plot.LivePlot(min_y=-10, max_y=250, window_x=1270, num_points=500, y_axis='Episode reward', x_axis='Number of episodes')
         self.running_loss = 0.0
         self.running_counter = 0
+
+        total_params = sum(p.numel() for p in self.q_network.parameters())
+        print('Number of parameters: %d' % total_params)
 
     def select_action(self, state, controls_state):  # Greedy policy
         action = self.q_network(state, controls_state).detach()
@@ -167,13 +172,13 @@ class QTrainer:
         print('Loaded actor weights from: ' + weights_path)
         hard_copy(self.target_q_network, self.q_network)
 
-    def optimize(self): # TODO: GO through the funciton and check
+    def optimize(self): # TODO: GO through the funciton and check. CHECK TERMINAL STATES thing
         if len(self.memory) < self.batch_size:
             return
         s1, a1, r1, s2, c_s1, c_s2 = self.memory.sample(self.batch_size)
         s = self.q_network(s1, c_s1)
         state_action_values = torch.stack([s[i, a1[i]] for i in range(self.batch_size)])  # Get estimated Q(s1,a1)
-        next_state_values = self.target_q_network(s2, c_s2).max(1)[0].detach()
+        next_state_values = self.target_q_network(s2, c_s2).detach().max(1)[0]
         expected_state_action_values = r1 + self.gamma * next_state_values
         loss = torch.clamp(F.mse_loss(state_action_values, expected_state_action_values), 0, 1.5)
         self.running_loss += loss

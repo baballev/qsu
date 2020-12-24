@@ -143,8 +143,7 @@ class QNetwork(nn.Module):
 
         self.fc3 = nn.Linear(convh * convw * 64, 1024)
         self.fcc3 = nn.Linear(control_dim, 64)
-        self.fc4 = nn.Linear(1024+64, 1024)
-        self.fc5 = nn.Linear(1024, action_dim)
+        self.fc4 = nn.Linear(1024+64, action_dim)
 
     def forward(self, state, control_state):
         global counting
@@ -176,5 +175,4 @@ class QNetwork(nn.Module):
         x = F.leaky_relu(self.fc3(x))
         y = F.leaky_relu(self.fcc3(control_state))
         y = torch.cat((x, y), dim=1)
-        y = F.leaky_relu(self.fc4(y))
-        return self.fc5(y)
+        return self.fc4(y)
