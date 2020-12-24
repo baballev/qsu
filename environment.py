@@ -3,6 +3,7 @@ import pyautogui
 import pyclick
 import gym
 import torch
+import win32api, win32con
 from random import randint
 from threading import Thread
 from gym import spaces
@@ -19,7 +20,7 @@ def threaded_mouse_move(x, y, t, human_clicker, curve):
 
 
 class OsuEnv(gym.Env):
-    def __init__(self, discrete_width, discrete_height, discrete_factor, height, width, stack_size, star=2, beatmap_name=None, no_fail=False, skip_pixels=4):
+    def __init__(self, discrete_width, discrete_height, discrete_factor, height, width, stack_size, star=2, beatmap_name=None, no_fail=False, skip_pixels=4, human_off_policy=False):
         super(OsuEnv, self).__init__()
         self.discrete_width = discrete_width
         self.discrete_height = discrete_height
@@ -27,7 +28,8 @@ class OsuEnv(gym.Env):
         self.width = width
         self.stack_size = stack_size
         self.discrete_factor = discrete_factor
-        print(self.discrete_factor)
+
+        self.human_off_policy = human_off_policy
 
         self.action_space = spaces.Discrete(discrete_height * discrete_width * 4)
         self.observation_space = spaces.Box(low=0, high=1, shape=(height, width, stack_size))
@@ -67,12 +69,11 @@ class OsuEnv(gym.Env):
         if steps < 15 and acc == -1:
             acc = self.previous_acc
         done = (score == -1)
-        #print(self.history[-1, 1, 1])
         if self.history[-1, 1, 1] > 0.0834 and steps > 25:
             done = True
             reward = torch.tensor(-1.0, device=device)
         else:
-            reward = self.get_reward(score, acc, steps)  # TODO: remove step?
+            reward = self.get_reward(score, acc)  # TODO: remove step?
         self.previous_acc = acc
         self.previous_score = score
 
@@ -99,6 +100,37 @@ class OsuEnv(gym.Env):
         self.previous_acc = torch.tensor(100.0, device=device)
         return torch.tensor([[0.5, 0.5, 0.0, 0.0]], device=device), self.history.unsqueeze(0)
 
+    def observe(self, steps, dt=1/(9.0*3)):
+        time.sleep(dt)
+        x, y = pyautogui.position()
+        left, right = (win32api.GetAsyncKeyState(ord('C')) <= -32767), (win32api.GetAsyncKeyState(ord('V')) <= -32767)
+        controls_state = torch.tensor([[left, right, x / self.width, y / self.height]], device=device)
+        for i in range(len(self.history)-1):
+            self.history[i] = self.history[i+1]
+        # TODO: maybe try threading every actions that can be if i need to win some time.
+        self.history[-1] = utils.screen.get_game_screen(self.screen, skip_pixels=self.skip_pixels).sum(0, keepdim=True) / 3.0
+        score, acc = utils.OCR.get_score_acc(self.screen, self.score_ocr, self.acc_ocr, self.window)
+        if (steps < 15 and score == -1) or (score - self.previous_score > 5 * (self.previous_score + 100)):
+            score = self.previous_score
+        if steps < 15 and acc == -1:
+            acc = self.previous_acc
+        done = (score == -1)
+        if self.history[-1, 1, 1] > 0.0834 and steps > 25:
+            done = True
+            reward = torch.tensor(-1.0, device=device)
+        else:
+            reward = self.get_reward(score, acc)  # TODO: remove step?
+        self.previous_acc = acc
+        self.previous_score = score
+
+        if left and right: v = 3
+        elif right: v = 2
+        elif left: v = 1
+        else: v = 0
+
+        action = torch.tensor(v * (self.discrete_width * self.discrete_height) + int((y/self.height) * self.discrete_height) * self.discrete_width + int((x / self.width ) * self.discrete_width), device=device)
+        return action, self.history.unsqueeze(0), controls_state, reward, done
+
     def render(self, mode='human', close=False):
         pass  # TODO
 
@@ -108,7 +140,10 @@ class OsuEnv(gym.Env):
                 utils.osu_routines.launch_selected_beatmap()
             else:
                 utils.osu_routines.launch_random_beatmap()
-        time.sleep(0.5)
+        else:
+            if self.beatmap_name is None:
+                utils.osu_routines.launch_random_beatmap()
+        time.sleep(0.3)
 
     def change_star(self, star=2):
         pass # ToDo
@@ -118,7 +153,7 @@ class OsuEnv(gym.Env):
         self.screen.stop()
         utils.osu_routines.stop_osu(self.process)
 
-    def get_reward(self, score, acc, step):
+    def get_reward(self, score, acc):
         if acc > self.previous_acc:
             bonus = torch.tensor(0.3, device=device)
         elif acc < self.previous_acc:

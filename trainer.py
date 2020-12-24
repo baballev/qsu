@@ -138,18 +138,18 @@ class QTrainer:
         print(self.q_network)
         if load_weights is not None:
             self.load_models(load_weights)
-        self.optimizer = torch.optim.RMSprop(self.q_network.parameters(), self.lr)
+        self.optimizer = torch.optim.RMSprop(self.q_network.parameters(), self.lr, eps=0.01, alpha=0.95)
 
         if load_memory is None:
-            self.memory = ReplayMemory(25000) # TODO: Increase
+            self.memory = ReplayMemory(1000000) # TODO: Increase
         else:
             self.memory = pickle.load(open(load_memory, 'rb'))
 
         self.noise = utils.noise.OsuDiscreteNoise(mu=torch.tensor(0.5, device=device), sigma=torch.tensor(0.25, device=device), min_val=0.0, max_val=0.999)
         #self.noise = utils.noise.OrnsteinUhlenbeckActionNoise(mu=torch.tensor([0.5, 0.5, 0.5], device=device), sigma=0.15, theta=0.25, x0=torch.tensor([0.5, 0.5, 0.5], device=device), min_val=0.0, max_val=0.9999)
 
-        self.plotter = utils.info_plot.LivePlot(min_y=0, max_y=5.0, num_points=500, y_axis='Average loss')
-        self.avg_reward_plotter = utils.info_plot.LivePlot(min_y=-50, max_y=400, window_x=1270, num_points=500, y_axis='Episode reward', x_axis='Number of episodes')
+        self.plotter = utils.info_plot.LivePlot(min_y=0, max_y=2.5, num_points=500, y_axis='Average loss')
+        self.avg_reward_plotter = utils.info_plot.LivePlot(min_y=-10, max_y=250, window_x=1270, num_points=500, y_axis='Episode reward', x_axis='Number of episodes')
         self.running_loss = 0.0
         self.running_counter = 0
 

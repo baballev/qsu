@@ -39,3 +39,8 @@ class ReplayMemory(object):
 
     def __len__(self):
         return len(self.memory)
+
+
+class EfficientReplayBuffer(object):
+    def __init__(self, capacity, stack_size):
+        pass  #TODO

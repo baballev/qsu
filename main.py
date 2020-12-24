@@ -16,7 +16,7 @@ pyautogui.MINIMUM_SLEEP = 0.0
 pyautogui.PAUSE = 0.0
 
 BATCH_SIZE = 20
-LEARNING_RATE = 0.0001
+LEARNING_RATE = 0.000001
 GAMMA = 0.999
 MAX_STEPS = 25000
 WIDTH = 878
@@ -25,8 +25,8 @@ STACK_SIZE = 4
 
 EPS_START = 0.99
 EPS_END = 0.1
-EPS_DECAY = 1000000
-TARGET_UPDATE = 2000  # Number of steps
+EPS_DECAY = 100000
+TARGET_UPDATE = 10000  # Number of steps
 
 DISCRETE_FACTOR = 10
 X_DISCRETE = 685 // DISCRETE_FACTOR + 1
@@ -38,7 +38,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 def trainQNetwork(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights=None, save_name='tests',
-                  beatmap_name=None, star=1, frequency=10, evaluation=False):
+                  beatmap_name=None, star=1, evaluation=False, human_off_policy=False, load_memory=None, no_fail=False):
     training_steps = 0
     print('Discretized x: ' + str(X_DISCRETE))
     print('Discretized y: ' + str(Y_DISCRETE))
@@ -48,8 +48,8 @@ def trainQNetwork(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights
     if evaluation:
         learning_rate = 0.0
 
-    env = environment.OsuEnv(X_DISCRETE, Y_DISCRETE, DISCRETE_FACTOR, WIDTH, HEIGHT, STACK_SIZE, star=star, beatmap_name=beatmap_name, no_fail=False, skip_pixels=PIXEL_SKIP)
-    q_trainer = QTrainer(env, batch_size=batch_size, lr=learning_rate, load_weights=load_weights)
+    env = environment.OsuEnv(X_DISCRETE, Y_DISCRETE, DISCRETE_FACTOR, WIDTH, HEIGHT, STACK_SIZE, star=star, beatmap_name=beatmap_name, no_fail=no_fail, skip_pixels=PIXEL_SKIP)
+    q_trainer = QTrainer(env, batch_size=batch_size, lr=learning_rate, load_weights=load_weights, load_memory=load_memory)
 
     episode_average_reward = 0.0
     k = 0
@@ -64,19 +64,24 @@ def trainQNetwork(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights
         for steps in range(MAX_STEPS):
             k += 1
             with torch.no_grad():
-                if evaluation:  # Choose greedy policy if tests
-                    action = q_trainer.select_action(state, controls_state)
-                else:  # Else choose an epsilon greedy policy with decaying epsilon
-                    sample = random()
-                    eps_threshold = EPS_END + (EPS_START - EPS_END) * math.exp(-1. * training_steps / EPS_DECAY)
-                    training_steps += 1
-                    if sample > eps_threshold:
+                if not human_off_policy:
+                    if evaluation:  # Choose greedy policy if tests
                         action = q_trainer.select_action(state, controls_state)
-                    else:
-                        x = q_trainer.noise()  # Normal distribution mean=0.5, clipped in [0, 1[ & uniform distrib
-                        action = torch.tensor([int(x[0] * X_DISCRETE) + X_DISCRETE * int(
-                            x[1] * Y_DISCRETE) + X_DISCRETE * Y_DISCRETE * int(x[2] * 4)], device=device)
-                new_state, new_controls_state, reward, done = env.step(action, steps)
+                    else:  # Else choose an epsilon greedy policy with decaying epsilon
+                        sample = random()
+                        eps_threshold = EPS_END + (EPS_START - EPS_END) * math.exp(-1. * training_steps / EPS_DECAY)
+                        training_steps += 1
+                        if sample > eps_threshold:
+                            action = q_trainer.select_action(state, controls_state)
+                        else:
+                            x = q_trainer.noise()  # Normal distribution mean=0.5, clipped in [0, 1[ & uniform distrib
+                            action = torch.tensor([int(x[0] * X_DISCRETE) + X_DISCRETE * int(
+                                x[1] * Y_DISCRETE) + X_DISCRETE * Y_DISCRETE * int(x[2] * 4)], device=device)
+
+                    new_state, new_controls_state, reward, done = env.step(action, steps)
+                else:
+                    action, new_state, new_controls_state, reward, done = env.observe(steps)
+
                 if done:
                     new_state = None
                 else:
@@ -137,12 +142,13 @@ def trainQNetwork(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights
         q_trainer.plotter.fig.savefig('average_loss' + str(episode_nb-1) + '.png')
         q_trainer.avg_reward_plotter.fig.savefig('average_reward' + str(episode_nb-1) + '.png')
 
-    q_trainer.memory.save('./memory.pck')
+    #q_trainer.memory.save('./memory.pck')
     env.stop()
 
 
 if __name__ == '__main__':
-    weights_path = './weights/q_net_fubuki guysReboot_12-12-2020-210.pt'
-    save_name = '_20-12-2020-'
-    trainQNetwork(5000, LEARNING_RATE, evaluation=False, load_weights=None, beatmap_name="golden time tv", star=2,
-                  save_name=save_name, batch_size=BATCH_SIZE)
+    weights_path = './weights/q_net__21-12-2020-14.pt'
+    memory_path = './memory.pck'
+    save_name = '_21-12-2020-'
+    trainQNetwork(50, LEARNING_RATE, evaluation=True, load_weights=weights_path, beatmap_name=None, star=2,
+                  save_name=save_name, batch_size=BATCH_SIZE, human_off_policy=False)

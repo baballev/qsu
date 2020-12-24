@@ -9,3 +9,6 @@ valid/
 dataset/
 logs/
 benchmark/
+memory.pck
+*.png
+statistics.pkl

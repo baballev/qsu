@@ -263,9 +263,11 @@ def return_to_beatmap2():
     hc = pyclick.HumanClicker()
     time.sleep(1.5)
     hc.move((515, 483), 0.9)
-    time.sleep(0.3)
+    time.sleep(0.5)
     hc.click()
-    time.sleep(0.25)
+    time.sleep(0.15)
+    hc.click()
+    time.sleep(0.1)
     return
 
 

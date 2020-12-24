@@ -131,26 +131,26 @@ class QNetwork(nn.Module):
         self.channels = channels
         self.action_dim = action_dim
 
-        self.conv1 = nn.Conv2d(self.channels, 16, kernel_size=7, stride=2)
-        self.conv2 = nn.Conv2d(16, 32, kernel_size=5, stride=2)
+        self.conv1 = nn.Conv2d(self.channels, 32, kernel_size=8, stride=4)
+        self.conv2 = nn.Conv2d(32, 64, kernel_size=4, stride=2)
+        self.conv3 = nn.Conv2d(64, 64, kernel_size=3, stride=1)
 
         def conv2d_size_out(size, kernel_size=5, stride=2):
             return (size - (kernel_size - 1) - 1) // stride + 1
 
-        convw = conv2d_size_out(conv2d_size_out(width, kernel_size=7))
-        convh = conv2d_size_out(conv2d_size_out(height, kernel_size=7))
+        convw = conv2d_size_out(conv2d_size_out(conv2d_size_out(width, kernel_size=8, stride=4), kernel_size=4), kernel_size=3)
+        convh = conv2d_size_out(conv2d_size_out(conv2d_size_out(height, kernel_size=8, stride=4), kernel_size=4), kernel_size=3)
 
-        self.fc3 = nn.Linear(convh * convw * 32, 2048)
-        self.fcc3 = nn.Linear(control_dim, 72)
-        self.fc4 = nn.Linear(2048+72, 1024)
-        self.fc5 = nn.Linear(1024, 512)
-        self.fc6 = nn.Linear(512, 1024)
-        self.fc7 = nn.Linear(1024, action_dim)
+        self.fc3 = nn.Linear(convh * convw * 64, 1024)
+        self.fcc3 = nn.Linear(control_dim, 64)
+        self.fc4 = nn.Linear(1024+64, 1024)
+        self.fc5 = nn.Linear(1024, action_dim)
 
     def forward(self, state, control_state):
         global counting
         x = F.leaky_relu(self.conv1(state))
         x = F.leaky_relu(self.conv2(x))
+        x = F.leaky_relu(self.conv3(x))
         '''
         if counting % 20 == 15:
             transforms.ToPILImage()(state[0]).save('truc_state.' + str(counting) + '.png')
@@ -177,7 +177,4 @@ class QNetwork(nn.Module):
         y = F.leaky_relu(self.fcc3(control_state))
         y = torch.cat((x, y), dim=1)
         y = F.leaky_relu(self.fc4(y))
-        y = F.leaky_relu(self.fc5(y))
-        y = F.leaky_relu(self.fc6(y))
-        y = self.fc7(y)
-        return y
+        return self.fc5(y)
