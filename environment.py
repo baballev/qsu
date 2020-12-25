@@ -103,7 +103,7 @@ class OsuEnv(gym.Env):
         self.previous_acc = torch.tensor(100.0, device=device)
         return torch.tensor([[0.5, 0.5, 0.0, 0.0]], device=device), self.history.unsqueeze(0)
 
-    def observe(self, steps, dt=1/(9.0*3)):
+    def observe(self, steps, dt=1/(9.0*3)):  # Obsoltete
         time.sleep(dt)
         x, y = pyautogui.position()
         left, right = (win32api.GetAsyncKeyState(ord('C')) <= -32767), (win32api.GetAsyncKeyState(ord('V')) <= -32767)
@@ -149,15 +149,15 @@ class OsuEnv(gym.Env):
         time.sleep(0.3)
 
     def change_star(self, star=2):
-        pass # ToDo
+        pass  # ToDo
 
     def stop(self):
         self.reset(0.5)
         self.screen.stop()
         utils.osu_routines.stop_osu(self.process)
 
-    def get_reward(self, score, acc):
-        if acc > self.previous_acc:
+    def get_reward(self, score, acc):  # ToDo: Rethink this reward function with and without nofail
+        if acc > self.previous_acc:    # ToDo: CLip it in [-1, 1] as well as TD-error in the optimization func, not here
             bonus = torch.tensor(0.3, device=device)
         elif acc < self.previous_acc:
             bonus = torch.tensor(-0.3, device=device)

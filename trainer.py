@@ -9,7 +9,7 @@ import utils.noise
 import utils.screen
 import utils.OCR
 import utils.info_plot
-import uitls.schedule
+import utils.schedule
 from memory import ReplayMemory
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -127,7 +127,8 @@ class Trainer:
 
 
 class QTrainer:
-    def __init__(self, env, batch_size=32, lr=0.0001, gamma=0.999, initial_p=1.0, end_p=0.05, decay_p=2000000, load_weights=None, load_memory=None):
+    def __init__(self, env, batch_size=32, lr=0.0001, gamma=0.999, initial_p=1.0, end_p=0.05, decay_p=2000000,
+                 load_weights=None, load_memory=None, min_experience=25000, gradient_clipping_norm=10.0):
         self.batch_size = batch_size
         self.lr = lr
         self.gamma = gamma
@@ -142,11 +143,11 @@ class QTrainer:
         self.optimizer = torch.optim.RMSprop(self.q_network.parameters(), self.lr, eps=0.01, alpha=0.95)
         self.scheduler = utils.schedule.LinearSchedule(decay_p, end_p, initial_p)
 
-
         if load_memory is None:
             self.memory = ReplayMemory(1000000) # TODO: Optimize memory
         else:
             self.memory = pickle.load(open(load_memory, 'rb'))
+        self.min_experience = min_experience
 
         self.noise = utils.noise.OsuDiscreteNoise(mu=torch.tensor(0.5, device=device), sigma=torch.tensor(0.25, device=device), min_val=0.0, max_val=0.999)
 
@@ -155,12 +156,20 @@ class QTrainer:
         self.running_loss = 0.0
         self.running_counter = 0
 
+        self.gradient_clipping_norm = gradient_clipping_norm
+
         total_params = sum(p.numel() for p in self.q_network.parameters())
         print('Number of parameters: %d' % total_params)
 
     def select_action(self, state, controls_state):  # Greedy policy
         action = self.q_network(state, controls_state).detach()
         _, action = torch.max(action, 1)
+        return action
+
+    def random_action(self, x_discrete, y_discrete, click_dim=4):
+        x = self.noise()  # Normal distribution mean=0.5, clipped in [0, 1[ & uniform distrib
+        action = torch.tensor([int(x[0] * x_discrete) + x_discrete * int(
+            x[1] * y_discrete) + x_discrete * y_discrete * int(x[2] * click_dim)], device=device)
         return action
 
     def save_model(self, file_name, num=0):
@@ -172,15 +181,15 @@ class QTrainer:
         print('Loaded actor weights from: ' + weights_path)
         hard_copy(self.target_q_network, self.q_network)
 
-    def optimize(self): # TODO: GO through the funciton and check. CHECK TERMINAL STATES thing
-        if len(self.memory) < self.batch_size:
+    def optimize(self): # TODO: GO through the funciton and check. CHECK TERMINAL STATES thing. CLamp rewards and td error
+        if len(self.memory) < self.min_experience:
             return
         s1, a1, r1, s2, c_s1, c_s2 = self.memory.sample(self.batch_size)
         s = self.q_network(s1, c_s1)
         state_action_values = torch.stack([s[i, a1[i]] for i in range(self.batch_size)])  # Get estimated Q(s1,a1)
         next_state_values = self.target_q_network(s2, c_s2).detach().max(1)[0]
         expected_state_action_values = r1 + self.gamma * next_state_values
-        loss = torch.clamp(F.mse_loss(state_action_values, expected_state_action_values), 0, 1.5)
+        loss = torch.clamp(F.mse_loss(state_action_values, expected_state_action_values), 0, 1.0)
         self.running_loss += loss
         if self.running_counter % 200 == 0:
             self.plotter.step(self.running_loss/200)
@@ -189,9 +198,11 @@ class QTrainer:
         self.running_counter += 1
         self.optimizer.zero_grad()
         loss.backward()
-
+        '''
         for param in self.q_network.parameters():  # Todo: Benchmark to see whether this is faster than value_clip
             param.grad.data.clamp_(-0.1, 0.1)
+        '''
+        torch.nn.utils.clip_grad_norm_(self.q_network.parameters(), self.gradient_clipping_norm)
 
         self.optimizer.step()
 

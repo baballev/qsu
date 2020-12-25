@@ -423,9 +423,9 @@ if __name__ == '__main__':
     f = open('statistics.pkl', 'rb')
     stat = pickle.load(f)
     f.close()
-    x = np.linspace(len(stat["mean_episode_rewards"]), 0, len(stat["mean_episode_rewards"]))
+    x = np.linspace(0, len(stat["mean_episode_rewards"]), len(stat["mean_episode_rewards"]))
     import matplotlib.pyplot as plt
     fig = plt.figure()
     ax = plt.subplot(111)
-    ax.plot(x, np.array(stat["mean_episode_rewards"][::-1]))
+    ax.plot(x, np.array(stat["mean_episode_rewards"]))
     plt.show()

@@ -90,9 +90,10 @@ def stop_osu(process):
 def move_to_songs(star=1):
     hc = pyclick.HumanClicker()
     time.sleep(1)
-    hc.move((496, 325),  0.3)
+    hc.move((496, 125),  0.3)
     hc.click()
     time.sleep(0.4)
+    hc.move((496, 325),  0.3)
     hc.click()
     time.sleep(0.4)
     hc.move((660, 210), 0.3)
