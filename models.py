@@ -10,6 +10,9 @@ import math
 counting = 0
 
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
 class Actor(nn.Module):
     def __init__(self, height=137, width=184, channels=1, action_dim=4, control_dim=4): # action dim: x, y, right_click, left_click
         super(Actor, self).__init__()
@@ -222,24 +225,25 @@ class NoisyLinear(nn.Module):
 
 
 class DuelDQN(nn.Module):
-    def __init__(self, atoms, num_actions, channels=4, width=1024, height=6000, std_init=0.1):
+    def __init__(self, atoms, num_actions, channels=4, width=256, height=150, std_init=0.1):
+        super(DuelDQN, self).__init__()
         self.num_actions = num_actions
         self.atoms = atoms
 
         self.conv1 = nn.Conv2d(channels, 32, kernel_size=8, stride=4)
         self.conv2 = nn.Conv2d(32, 64, kernel_size=4, stride=2)
-        self.conv3 = nn.Conv2d(64, 64, kernel_size=3, stride=1)
+        self.conv3 = nn.Conv2d(64, 64, kernel_size=4, stride=2)
 
         def conv2d_size_out(size, kernel_size=5, stride=2):
             return (size - (kernel_size - 1) - 1) // stride + 1
 
-        convw = conv2d_size_out(conv2d_size_out(conv2d_size_out(width, kernel_size=8, stride=4), kernel_size=4, stride=2), kernel_size=3, stride=1)
-        convh = conv2d_size_out(conv2d_size_out(conv2d_size_out(height, kernel_size=8, stride=4), kernel_size=4, stride=2), kernel_size=3, stride=1)
+        convw = conv2d_size_out(conv2d_size_out(conv2d_size_out(width, kernel_size=8, stride=4), kernel_size=4, stride=2), kernel_size=4, stride=2)
+        convh = conv2d_size_out(conv2d_size_out(conv2d_size_out(height, kernel_size=8, stride=4), kernel_size=4, stride=2), kernel_size=4, stride=2)
 
-        self.nfc4_v = NoisyLinear(convh * convw * 64, 1024, std_init=std_init)
-        self.nfc5_v = NoisyLinear(1024, self.atoms, std_init=std_init)
-        self.nfc4_a = NoisyLinear(convh * convw * 64, 1024, std_init=std_init)
-        self.nfc5_a = NoisyLinear(1024, self.num_actions * self.atoms, std_init=std_init)
+        self.nfc4_v = NoisyLinear(convh * convw * 64, 1024, std_init=std_init).to(device)
+        self.nfc5_v = NoisyLinear(1024, self.atoms, std_init=std_init).to(device)
+        self.nfc4_a = NoisyLinear(convh * convw * 64, 1024, std_init=std_init).to(device)
+        self.nfc5_a = NoisyLinear(1024, self.num_actions * self.atoms, std_init=std_init).to(device)
 
     def forward(self, x, log=False):
         x = F.relu(self.conv1(x))

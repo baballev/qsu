@@ -7,23 +7,11 @@ import win32api, win32con
 from random import randint
 from threading import Thread
 from gym import spaces
-from rtgym import RealTimeGymInterface, DEFAULT_CONFIG_DICT
 
 import utils.screen
 import utils.osu_routines
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-
-def make_config():
-    config = DEFAULT_CONFIG_DICT
-    config["time_step_duration"] = 0.08
-    config["start_obs_capture"] = 0.08
-    config["time_step_timeout_factor"] = 1.0
-    config["ep_max_length"] = 25000
-    config["act_buf_len"] = 4
-    config["reset_act_buf"] = False
-    return config
 
 
 def threaded_mouse_move(x, y, t, human_clicker, curve):
@@ -211,12 +199,13 @@ class OsuEnv(gym.Env):
         self.history[-1] = utils.screen.get_game_screen(self.screen, skip_pixels=self.skip_pixels).sum(0, keepdim=True) / 3.0
 
 
-class ManiaEnv(RealTimeGymInterface):
-    def __init__(self, width=1024, height=600, stack_size=4, star=1, beatmap_name=None, skip_pixels=4):
+class ManiaEnv(gym.Env):
+    def __init__(self, width=1024, height=600, stack_size=4, star=4, beatmap_name=None, skip_pixels=4):
+        super(ManiaEnv, self).__init__()
         self.stack_size = stack_size
 
         self.action_space = spaces.Discrete(2**7)
-        self.observation_space = spaces.Box(low=0, high=1, shape=(height, width, stack_size))
+        self.observation_space = spaces.Box(low=0, high=1.0, shape=(height//skip_pixels, width//skip_pixels, stack_size))
 
         self.screen = utils.screen.init_screen(capture_output="pytorch_float_gpu")
         self.score_ocr = utils.OCR.init_OCR('./weights/OCR/OCR_score2.pt').to(device)
@@ -233,6 +222,7 @@ class ManiaEnv(RealTimeGymInterface):
 
         self.previous_score = None
         self.previous_acc = None
+        self.history = None
 
         self.steps = 0
 
@@ -240,7 +230,7 @@ class ManiaEnv(RealTimeGymInterface):
         if beatmap_name is not None:
             utils.osu_routines.select_beatmap(beatmap_name)
 
-    def send_control(self, control):  # Control in [0, 127=2**7-1]
+    def perform_actions(self, control):  # Control in [0, 127=2**7-1]
         l = [0, 0, 0, 0, 0, 0, 0]
         q, r = divmod(control, 2**6)
         i = 0
@@ -250,20 +240,41 @@ class ManiaEnv(RealTimeGymInterface):
             q, r = divmod(r, 2**(6-i))
             l[i] = q
         for i, key in enumerate(self.key_dict.keys()):
-            if q[i]:
+            if l[i]:
                 win32api.keybd_event(self.key_dict[key], 0, 0, 0)
             else:
                 win32api.keybd_event(self.key_dict[key], 0, win32con.KEYEVENTF_KEYUP, 0)
 
-    def reset(self):
+    def launch_episode(self, reward):
+        if reward != -1:
+            if self.beatmap_name is not None:
+                utils.osu_routines.launch_selected_beatmap()
+            else:
+                utils.osu_routines.launch_random_beatmap()
+        else:
+            if self.beatmap_name is None:
+                utils.osu_routines.launch_random_beatmap()
+        time.sleep(0.3)
+
+    def reset(self, reward=0.0):
+        if self.steps != 0:
+            if reward != -1.0:
+                utils.osu_routines.return_to_beatmap()
+            else:
+                if self.beatmap_name is not None:
+                    utils.osu_routines.restart()
+                else:
+                    utils.osu_routines.return_to_beatmap2()
         self.steps = 0
         for key in self.key_dict.keys():
             win32api.keybd_event(self.key_dict[key], 0, win32con.KEYEVENTF_KEYUP, 0)
-
         state = utils.screen.get_game_screen(self.screen, skip_pixels=self.skip_pixels).sum(0, keepdim=True) / 3.0
+        self.history = torch.cat([state for _ in range(self.stack_size - 1)])
+        state = utils.screen.get_game_screen(self.screen, skip_pixels=self.skip_pixels).sum(0, keepdim=True) / 3.0
+        self.history = torch.cat((self.history, state), 0)
         self.previous_score = torch.tensor(0.0, device=device)
         self.previous_acc = torch.tensor(100.0, device=device)
-        return state.unsqueeze(0)
+        return self.history.unsqueeze(0)
 
     def get_reward(self, score, acc):  # ToDo: Rethink this reward function with and without nofail
         if acc > self.previous_acc:    # ToDo: CLip it in [-1, 1] as well as TD-error in the optimization func, not here
@@ -275,10 +286,14 @@ class ManiaEnv(RealTimeGymInterface):
         return torch.clamp(0.1*torch.log10(max((score - self.previous_score),
                                                torch.tensor(1.0, device=device))) + bonus, -1, 1)
 
-    def get_obs_rew_done(self):
+    def step(self, action):
         self.steps += 1
-        obs = utils.screen.get_game_screen(self.screen, skip_pixels=self.skip_pixels).sum(0, keepdim=True) / 3.0
+        self.perform_actions(action)
+        for i in range(len(self.history)-1):
+            self.history[i] = self.history[i+1]
 
+        th = Thread(target=self.threaded_screen_fetch)
+        th.start()
         score, acc = utils.OCR.get_score_acc(self.screen, self.score_ocr, self.acc_ocr, self.window)
 
         if (self.steps < 15 and score == -1) or (score - self.previous_score > 5 * (self.previous_score + 100)):
@@ -287,7 +302,7 @@ class ManiaEnv(RealTimeGymInterface):
             acc = self.previous_acc
 
         done = (score == -1)
-        if obs[-1, 1, 1] > 0.0834 and self.steps > 25:
+        if self.history[-1, 1, 1] > 0.0834 and self.steps > 25:
             done = True
             rew = torch.tensor(-1.0, device=device)
         else:
@@ -295,14 +310,7 @@ class ManiaEnv(RealTimeGymInterface):
         self.previous_acc = acc
         self.previous_score = score
 
-        return obs, rew, done
+        return self.history.unsqueeze(0), rew, done
 
-    def get_observation_space(self):
-        return self.observation_space
-
-    def get_action_space(self):
-        return self.action_space
-
-    def get_default_action(self):
-        return 0  # Do Nothing
-
+    def threaded_screen_fetch(self):
+        self.history[-1] = utils.screen.get_game_screen(self.screen, skip_pixels=self.skip_pixels).sum(0, keepdim=True) / 3.0

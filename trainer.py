@@ -227,18 +227,20 @@ class RainbowTrainer:
         self.delta_z = (self.Vmax - self.Vmin) / (self.atoms - 1)
 
         self.env = env
-        self.memory = PrioritizedMemory(1000000, priority_weight=beta, priority_exponent=omega, multi_step=n, discount=self.gamma, history_length=env.stack_size)
 
-        self.network = models.DuelDQN(action_dim=env.action_space.n, channels=env.stack_size, std_init=sigma).to(device)
+        self.network = models.DuelDQN(num_actions=env.action_space.n, atoms=self.atoms, channels=env.stack_size, std_init=sigma).to(device)
+        print(self.network)
+
 
         if load_weights is not None:
             self.network.load_state_dict(torch.load(load_weights))
 
-        self.target_network = models.DuelDQN(action_dim=env.action_space.n, channels=env.stack_size, std_init=sigma).to(device)
+        self.target_network = models.DuelDQN(num_actions=env.action_space.n, atoms=self.atoms, channels=env.stack_size, std_init=sigma).to(device)
         self.update_target_net()
         for param in self.target_network.parameters():
             param.requires_grad = False
 
+        self.memory = PrioritizedMemory(250000, priority_weight=beta, priority_exponent=omega, multi_step=n, discount=self.gamma, history_length=env.stack_size)
         self.optimizer = torch.optim.Adam(self.network.parameters(), lr=self.lr, eps=eps)
 
     def update_target_net(self):
@@ -249,7 +251,8 @@ class RainbowTrainer:
 
     def select_action(self, state):
         with torch.no_grad():
-            return (self.network(state.unsqueeze(0)) * self.support).sum(2).argmax(1).item()
+            tmp = (self.network(state) * self.support).sum(2).argmax(1).item()
+            return tmp
 
     def optimize(self):
         idx_batch, state_batch, action_batch, return_batch, next_state_batch, nonterminal_batch, weight_batch = self.memory.sample(self.batch_size)

@@ -43,8 +43,8 @@ class ReplayMemory(object):
 
 
 ## TAKEN FROM: https://github.com/Kaixhin/Rainbow/blob/master/memory.py
-Transition_dtype = np.dtype([('timestep', np.int32), ('state', np.uint8, (84, 84)), ('action', np.int32), ('reward', np.float32), ('nonterminal', np.bool_)])
-blank_trans = (0, np.zeros((84, 84), dtype=np.uint8), 0, 0.0, False)
+Transition_dtype = np.dtype([('timestep', np.int32), ('state', np.uint8, (150, 256)), ('action', np.int32), ('reward', np.float32), ('nonterminal', np.bool_)])
+blank_trans = (0, np.zeros((150, 256), dtype=np.uint8), 0, 0.0, False)
 
 
 # Segment tree data structure where parent node values are sum/max of children node values
