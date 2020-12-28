@@ -257,7 +257,6 @@ class ManiaEnv(gym.Env):
                 else:
                     win32api.keybd_event(self.key_dict[key], 0, win32con.KEYEVENTF_KEYUP, 0)
 
-
     def launch_episode(self, reward):
         if reward != -1:
             if self.beatmap_name is not None:
@@ -302,7 +301,7 @@ class ManiaEnv(gym.Env):
     def step(self, action):
         self.steps += 1
         self.perform_actions(action)
-        time.sleep(0.02)
+        time.sleep(0.025)
         for i in range(len(self.history)-1):
             self.history[i] = self.history[i+1]
 
@@ -310,13 +309,13 @@ class ManiaEnv(gym.Env):
         th.start()
         score, acc = utils.OCR.get_score_acc(self.screen, self.score_ocr, self.acc_ocr, self.window)
 
-        if (self.steps < 15 and score == -1) or (score - self.previous_score > 5 * (self.previous_score + 100)):
+        if (self.steps < 25 and score == -1) or (score - self.previous_score > 5 * (self.previous_score + 100)):
             score = self.previous_score
-        if self.steps < 15 and acc == -1:
+        if self.steps < 25 and acc == -1:
             acc = self.previous_acc
 
         done = (score == -1)
-        if self.history[-1, 1, 1] > 0.0834 and self.steps > 25:
+        if self.history[-1, 1, 1] > 0.0834 and self.steps > 30:
             done = True
             rew = torch.tensor(-1.0, device=device)
         else:
@@ -325,6 +324,9 @@ class ManiaEnv(gym.Env):
         self.previous_score = score
 
         return self.history.unsqueeze(0), rew, done
+
+    def render(self, t):
+        pass
 
     def threaded_screen_fetch(self):
         self.history[-1] = utils.screen.get_game_screen(self.screen, skip_pixels=self.skip_pixels).sum(0, keepdim=True) / 3.0

@@ -188,13 +188,8 @@ def RainbowManiaTrain(lr=0.00005, batch_size=32, gamma=0.999, omega=0.5, beta=0.
             env.launch_episode(reward)
             if need_save:
                 trainer.save(save_path + str(t) + ".pt")
+                need_save = False
                 # TODO: Memory saving with bz2
-
-            if need_update:
-                start = time.time()
-                trainer.update_target_net()
-                end = time.time()
-                print(end-start)
 
             start = time.time()
 
@@ -209,7 +204,7 @@ def RainbowManiaTrain(lr=0.00005, batch_size=32, gamma=0.999, omega=0.5, beta=0.
             trainer.optimize()
 
         if t % target_update_freq == 0 and t > 0:
-            need_update = True  # TODO: CHECK IF THIS TAKES TIME, IF NOT PUT IT DURING GAMEPLAY
+            trainer.update_target_net()
 
         if t % save_freq == 0 and t > 0:
             need_save = True
