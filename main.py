@@ -165,10 +165,10 @@ def trainQNetwork(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights
 def RainbowManiaTrain(lr=0.00005, batch_size=32, gamma=0.999, omega=0.5, beta=0.4, sigma=0.1, eps=1.5e-4, n=3, atoms=51,
                       max_timesteps=50000000, learn_start=100000, stack_size=4, norm_clip=10, save_freq=50000,
                       save_path='weights/Rainbow_test', target_update_freq=80000, star=4, beatmap_name=None,
-                      width=1024, height=600, skip_pixels=4):
+                      width=1024, height=600, skip_pixels=4, num_actions=128):
     priority_weight_increase = (1 - beta) / (max_timesteps - learn_start)
 
-    env = environment.ManiaEnv(stack_size=stack_size, star=star, beatmap_name=beatmap_name)
+    env = environment.ManiaEnv(height=height, width=width, stack_size=stack_size, star=star, beatmap_name=beatmap_name, num_actions=num_actions, skip_pixels=skip_pixels)
     trainer = RainbowTrainer(env, batch_size=batch_size, lr=lr, gamma=gamma, omega=omega, beta=beta, sigma=sigma, n=n,
                              eps=eps, atoms=atoms, norm_clip=norm_clip)
 
@@ -176,8 +176,14 @@ def RainbowManiaTrain(lr=0.00005, batch_size=32, gamma=0.999, omega=0.5, beta=0.
     need_save = False
     need_update = False
     done = True
+    start = time.time()
+    count = 0
     for t in range(max_timesteps):
         if done:
+            if t > 0:
+                end = time.time()
+                print((t-count)/(end - start))
+                count = t
             state = env.reset(reward)
             env.launch_episode(reward)
             if need_save:
@@ -190,11 +196,13 @@ def RainbowManiaTrain(lr=0.00005, batch_size=32, gamma=0.999, omega=0.5, beta=0.
                 end = time.time()
                 print(end-start)
 
+            start = time.time()
+
         trainer.reset_noise()
         action = trainer.select_action(state)  # ToDo print pour débug
         next_state, reward, done = env.step(action)
         reward = max(min(reward, 1.0), -1.0)  # Reward clipping
-        trainer.memory.append(state, action, reward, done)
+        trainer.memory.append(state[-1], action, reward, done)
 
         if t >= learn_start:
             trainer.memory.priority_weight = min(trainer.memory.priority_weight + priority_weight_increase, 1)
@@ -216,4 +224,4 @@ if __name__ == '__main__':
                   save_name=save_name, batch_size=BATCH_SIZE, human_off_policy=False, no_fail=True,
                   initial_p=1.0, end_p=0.05, decay_p=4000000, target_update=30000, init_k=0, min_experience=50)
     '''
-    RainbowManiaTrain(star=4, beatmap_name="todestrieb")
+    RainbowManiaTrain(star=4, beatmap_name="todestrieb", num_actions=2**4)

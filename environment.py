@@ -1,3 +1,4 @@
+import math
 import time
 import pyautogui
 import pyclick
@@ -200,11 +201,11 @@ class OsuEnv(gym.Env):
 
 
 class ManiaEnv(gym.Env):
-    def __init__(self, width=1024, height=600, stack_size=4, star=4, beatmap_name=None, skip_pixels=4):
+    def __init__(self, width=1024, height=600, stack_size=4, star=4, beatmap_name=None, skip_pixels=4, num_actions=128):
         super(ManiaEnv, self).__init__()
         self.stack_size = stack_size
 
-        self.action_space = spaces.Discrete(2**7)
+        self.action_space = spaces.Discrete(num_actions)
         self.observation_space = spaces.Box(low=0, high=1.0, shape=(height//skip_pixels, width//skip_pixels, stack_size))
 
         self.screen = utils.screen.init_screen(capture_output="pytorch_float_gpu")
@@ -213,7 +214,7 @@ class ManiaEnv(gym.Env):
         self.process, self.window = utils.osu_routines.start_osu()
         self.hc = pyclick.HumanClicker()
 
-        self.key_dict = {' ': 0x20, 'd': 0x44, 'f': 0x46, 'j': 0x4A, 'k': 0x4B, 'l': 0x4C, 's': 0x53}
+        self.key_dict = {'d': 0x44, 'f': 0x46, 'j': 0x4A, 'k': 0x4B, 'l': 0x4C, 's': 0x53, ' ': 0x20}
 
         self.star = star
         self.beatmap_name = beatmap_name
@@ -231,19 +232,31 @@ class ManiaEnv(gym.Env):
             utils.osu_routines.select_beatmap(beatmap_name)
 
     def perform_actions(self, control):  # Control in [0, 127=2**7-1]
-        l = [0, 0, 0, 0, 0, 0, 0]
-        q, r = divmod(control, 2**6)
+        n = math.floor(math.log2(self.action_space.n))
+        l = [0 for _ in range(n)]
+        q, r = divmod(control, 2**(n - 1))
         i = 0
         l[i] = q
-        while q > 0:
+        for _ in range(n-1):
             i += 1
-            q, r = divmod(r, 2**(6-i))
+            q, r = divmod(r, 2**(n - (i+1)))
             l[i] = q
-        for i, key in enumerate(self.key_dict.keys()):
-            if l[i]:
-                win32api.keybd_event(self.key_dict[key], 0, 0, 0)
-            else:
-                win32api.keybd_event(self.key_dict[key], 0, win32con.KEYEVENTF_KEYUP, 0)
+        if n == 7:
+            for i, key in enumerate(self.key_dict.keys()):
+                if l[i]:
+                    win32api.keybd_event(self.key_dict[key], 0, 0, 0)
+                else:
+                    win32api.keybd_event(self.key_dict[key], 0, win32con.KEYEVENTF_KEYUP, 0)
+        if n == 4:
+            for i, key in enumerate(self.key_dict.keys()):
+                if i >= 4:
+                    break
+
+                if l[i]:
+                    win32api.keybd_event(self.key_dict[key], 0, 0, 0)
+                else:
+                    win32api.keybd_event(self.key_dict[key], 0, win32con.KEYEVENTF_KEYUP, 0)
+
 
     def launch_episode(self, reward):
         if reward != -1:
@@ -289,6 +302,7 @@ class ManiaEnv(gym.Env):
     def step(self, action):
         self.steps += 1
         self.perform_actions(action)
+        time.sleep(0.02)
         for i in range(len(self.history)-1):
             self.history[i] = self.history[i+1]
 
