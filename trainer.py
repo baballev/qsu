@@ -10,7 +10,7 @@ import utils.screen
 import utils.OCR
 import utils.info_plot
 import utils.schedule
-from memory import ReplayMemory
+from memory import ReplayMemory, PrioritizedMemory
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -126,6 +126,8 @@ class Trainer:
         soft_update(self.target_critic, self.critic, self.tau)
 
 
+# ToDo: Inheritance Trainers
+
 class QTrainer:
     def __init__(self, env, batch_size=32, lr=0.0001, gamma=0.999, initial_p=1.0, end_p=0.05, decay_p=2000000,
                  load_weights=None, load_memory=None, min_experience=25000, gradient_clipping_norm=10.0):
@@ -205,6 +207,93 @@ class QTrainer:
         torch.nn.utils.clip_grad_norm_(self.q_network.parameters(), self.gradient_clipping_norm)
 
         self.optimizer.step()
+
+
+## ADAPTED FROM: https://github.com/Kaixhin/Rainbow/blob/master/agent.py
+
+class RainbowTrainer:
+    def __init__(self, env, batch_size=32, lr=0.0001, gamma=0.999, beta=0.4, omega=0.5, sigma=0.1, eps=1.5e-4, n=3, atoms=51,
+                 Vmin=-10.0, Vmax=10.0, norm_clip=10.0, load_weights=None):
+        self.batch_size = batch_size
+        self.lr = lr
+        self.gamma = gamma
+        self.n = n
+        self.atoms = atoms
+        self.Vmin = Vmin
+        self.Vmax = Vmax
+        self.norm_clip = norm_clip
+
+        self.support = torch.linspace(self.Vmin, self.Vmax, self.atoms).to(device)
+        self.delta_z = (self.Vmax - self.Vmin) / (self.atoms - 1)
+
+        self.env = env
+        self.memory = PrioritizedMemory(1000000, priority_weight=beta, priority_exponent=omega, multi_step=n, discount=self.gamma, history_length=env.stack_size)
+
+        self.network = models.DuelDQN(action_dim=env.action_space.n, channels=env.stack_size, std_init=sigma).to(device)
+
+        if load_weights is not None:
+            self.network.load_state_dict(torch.load(load_weights))
+
+        self.target_network = models.DuelDQN(action_dim=env.action_space.n, channels=env.stack_size, std_init=sigma).to(device)
+        self.update_target_net()
+        for param in self.target_network.parameters():
+            param.requires_grad = False
+
+        self.optimizer = torch.optim.Adam(self.network.parameters(), lr=self.lr, eps=eps)
+
+    def update_target_net(self):
+        self.target_network.load_state_dict(self.network.state_dict())
+
+    def reset_noise(self):
+        self.network.reset_noise()
+
+    def select_action(self, state):
+        with torch.no_grad():
+            return (self.network(state.unsqueeze(0)) * self.support).sum(2).argmax(1).item()
+
+    def optimize(self):
+        idx_batch, state_batch, action_batch, return_batch, next_state_batch, nonterminal_batch, weight_batch = self.memory.sample(self.batch_size)
+
+        log_ps = self.network(state_batch, log=True)
+        log_ps_a = log_ps[range(self.batch_size), action_batch]
+
+        with torch.no_grad():
+            pns = self.net(next_state_batch)  # Probabilities p(s_t+n, ·; θonline)
+            dns = self.support.expand_as(pns) * pns  # Distribution d_t+n = (z, p(s_t+n, ·; θonline))
+            argmax_idx_ns = dns.sum(2).argmax(1)  # Perform argmax action selection using online network: argmax_a[(z, p(s_t+n, a; θonline))]
+            self.target_network.reset_noise()
+            pns = self.target_network(next_state_batch)
+            pns_a = pns[range(self.batch_size), argmax_idx_ns]  # Double-Q probabilities p(s_t+n, argmax_a[(z, p(s_t+n, a; θonline))]; θtarget)
+
+            # Compute Bellman's operator T applied to z
+            Tz = return_batch.unsqueeze(1) + nonterminal_batch * (self.gamma ** self.n) * self.support.unsqueeze(0)
+            Tz = Tz.clamp(min=self.Vmin, max=self.Vmax)   # ToDo: Tune Vmin and Vmax so that it is adapted to the reward received
+            # L2 projection
+            b = (Tz - self.Vmin) / self.delta_z  # b = (Tz - Vmin) / Δz
+            l, u = b.floor().to(torch.int64), b.ceil().to(torch.int64)
+
+            # Fix disappearing probability mass when l = b = u (b is int)
+            l[(u > 0) * (l == u)] -= 1
+            u[(l < (self.atoms - 1)) * (l == u)] += 1
+
+            # Distribute probabilities of Tz
+            m = state_batch.new_zeros(self.batch_size, self.atoms)
+            offset = torch.linspace(0, ((self.batch_size - 1) * self.atoms), self.batch_size).unsqueeze(1).expand(self.batch_size, self.atoms).to(action_batch)
+            m.view(-1).index_add_(0, (l + offset).view(-1),
+                                  (pns_a * (u.float() - b)).view(-1))  # m_l = m_l + p(s_t+n, a*)(u - b)
+            m.view(-1).index_add_(0, (u + offset).view(-1),
+                                  (pns_a * (b - l.float())).view(-1))  # m_u = m_u + p(s_t+n, a*)(b - l)
+
+        loss = - torch.sum(m * log_ps_a, 1)  # Cross-entropy loss (minimises DKL(m||p(s_t, a_t)))
+        self.network.zero_grad()
+        (weight_batch * loss).mean().backward()  # Backpropagate importance-weighted minibatch loss
+        torch.nn.utils.clip_grad_norm_(self.network.parameters(), self.norm_clip)
+        self.optimizer.step()
+
+        self.memory.update_priorities(idx_batch, loss.detach().cpu().numpy())
+
+    def save(self, path):
+        torch.save(self.network.state_dict(), path)
 
 
 if __name__ == '__main__':

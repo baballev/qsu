@@ -3,9 +3,14 @@ import time
 import numpy as np
 import utils.osu_routines
 import win32gui
+import datetime
 from threading import Thread
 
 window_idx = 1
+
+
+def log(s):
+    print('[' + str(datetime.now().strftime('%Y-%m-%dT%H:%M:%S')) + '] ' + s)
 
 
 class LivePlot:

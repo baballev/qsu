@@ -7,11 +7,23 @@ import win32api, win32con
 from random import randint
 from threading import Thread
 from gym import spaces
+from rtgym import RealTimeGymInterface, DEFAULT_CONFIG_DICT
 
 import utils.screen
 import utils.osu_routines
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
+def make_config():
+    config = DEFAULT_CONFIG_DICT
+    config["time_step_duration"] = 0.08
+    config["start_obs_capture"] = 0.08
+    config["time_step_timeout_factor"] = 1.0
+    config["ep_max_length"] = 25000
+    config["act_buf_len"] = 4
+    config["reset_act_buf"] = False
+    return config
 
 
 def threaded_mouse_move(x, y, t, human_clicker, curve):
@@ -198,4 +210,99 @@ class OsuEnv(gym.Env):
     def threaded_screen_fetch(self):
         self.history[-1] = utils.screen.get_game_screen(self.screen, skip_pixels=self.skip_pixels).sum(0, keepdim=True) / 3.0
 
+
+class ManiaEnv(RealTimeGymInterface):
+    def __init__(self, width=1024, height=600, stack_size=4, star=1, beatmap_name=None, skip_pixels=4):
+        self.stack_size = stack_size
+
+        self.action_space = spaces.Discrete(2**7)
+        self.observation_space = spaces.Box(low=0, high=1, shape=(height, width, stack_size))
+
+        self.screen = utils.screen.init_screen(capture_output="pytorch_float_gpu")
+        self.score_ocr = utils.OCR.init_OCR('./weights/OCR/OCR_score2.pt').to(device)
+        self.acc_ocr = utils.OCR.init_OCR('./weights/OCR/OCR_acc2.pt').to(device)
+        self.process, self.window = utils.osu_routines.start_osu()
+        self.hc = pyclick.HumanClicker()
+
+        self.key_dict = {' ': 0x20, 'd': 0x44, 'f': 0x46, 'j': 0x4A, 'k': 0x4B, 'l': 0x4C, 's': 0x53}
+
+        self.star = star
+        self.beatmap_name = beatmap_name
+        self.skip_pixels = skip_pixels
+        self.first = True
+
+        self.previous_score = None
+        self.previous_acc = None
+
+        self.steps = 0
+
+        utils.osu_routines.move_to_songs(star=star)
+        if beatmap_name is not None:
+            utils.osu_routines.select_beatmap(beatmap_name)
+
+    def send_control(self, control):  # Control in [0, 127=2**7-1]
+        l = [0, 0, 0, 0, 0, 0, 0]
+        q, r = divmod(control, 2**6)
+        i = 0
+        l[i] = q
+        while q > 0:
+            i += 1
+            q, r = divmod(r, 2**(6-i))
+            l[i] = q
+        for i, key in enumerate(self.key_dict.keys()):
+            if q[i]:
+                win32api.keybd_event(self.key_dict[key], 0, 0, 0)
+            else:
+                win32api.keybd_event(self.key_dict[key], 0, win32con.KEYEVENTF_KEYUP, 0)
+
+    def reset(self):
+        self.steps = 0
+        for key in self.key_dict.keys():
+            win32api.keybd_event(self.key_dict[key], 0, win32con.KEYEVENTF_KEYUP, 0)
+
+        state = utils.screen.get_game_screen(self.screen, skip_pixels=self.skip_pixels).sum(0, keepdim=True) / 3.0
+        self.previous_score = torch.tensor(0.0, device=device)
+        self.previous_acc = torch.tensor(100.0, device=device)
+        return state.unsqueeze(0)
+
+    def get_reward(self, score, acc):  # ToDo: Rethink this reward function with and without nofail
+        if acc > self.previous_acc:    # ToDo: CLip it in [-1, 1] as well as TD-error in the optimization func, not here
+            bonus = torch.tensor(0.3, device=device)
+        elif acc < self.previous_acc:
+            bonus = torch.tensor(-0.3, device=device)
+        else:
+            bonus = torch.tensor(0.1, device=device)
+        return torch.clamp(0.1*torch.log10(max((score - self.previous_score),
+                                               torch.tensor(1.0, device=device))) + bonus, -1, 1)
+
+    def get_obs_rew_done(self):
+        self.steps += 1
+        obs = utils.screen.get_game_screen(self.screen, skip_pixels=self.skip_pixels).sum(0, keepdim=True) / 3.0
+
+        score, acc = utils.OCR.get_score_acc(self.screen, self.score_ocr, self.acc_ocr, self.window)
+
+        if (self.steps < 15 and score == -1) or (score - self.previous_score > 5 * (self.previous_score + 100)):
+            score = self.previous_score
+        if self.steps < 15 and acc == -1:
+            acc = self.previous_acc
+
+        done = (score == -1)
+        if obs[-1, 1, 1] > 0.0834 and self.steps > 25:
+            done = True
+            rew = torch.tensor(-1.0, device=device)
+        else:
+            rew = self.get_reward(score, acc)  # TODO: remove step?
+        self.previous_acc = acc
+        self.previous_score = score
+
+        return obs, rew, done
+
+    def get_observation_space(self):
+        return self.observation_space
+
+    def get_action_space(self):
+        return self.action_space
+
+    def get_default_action(self):
+        return 0  # Do Nothing
 

@@ -26,7 +26,7 @@ def get_screen_region(capturer, region):
 
 
 def get_game_screen(capturer, skip_pixels=4):
-    return capturer.screenshot(region=GAME_REGION).permute(2, 0, 1)[:, ::skip_pixels, ::skip_pixels]  # Divide each size by skip_pixels
+    return capturer.screenshot(region=WINDOW_REGION).permute(2, 0, 1)[:, ::skip_pixels, ::skip_pixels]  # Divide each size by skip_pixels
 
 
 def save_screen(capturer, output_dir, output_name, region=WINDOW_REGION):
