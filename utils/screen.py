@@ -9,9 +9,7 @@ MANIA_REGION = (140, 26, 520, 626)
 
 
 def init_screen(capture_output="pytorch_float_gpu"):
-    print('Initiating screen capture.')
     capturer = d3dshot.create(capture_output=capture_output, frame_buffer_size=5)
-    print(capturer.display)
     print('Game Region capture size:')
     print(get_game_screen(capturer, skip_pixels=1).shape)
     print(get_game_screen(capturer, skip_pixels=4).shape)

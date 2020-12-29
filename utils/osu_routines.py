@@ -69,9 +69,16 @@ def start_osu():
         osu_window = win32gui.FindWindow(None, "osu!")
         width, height = win32gui.GetWindowRect(osu_window)[2] - win32gui.GetWindowRect(osu_window)[0], \
                         win32gui.GetWindowRect(osu_window)[3] - win32gui.GetWindowRect(osu_window)[1]
-        print(width)
-        print(height)
         win32gui.MoveWindow(osu_window, -3, 0, width, height, False)
+        print(' ________   ________  ___  ___  ___       ')
+        print('|\   __  \ |\   ____\|\  \|\  \|\  \      ')
+        print('\ \  \|\  \\\\ \  \___|\ \  \\\\\  \ \  \     ')
+        print(' \ \  \\\\\  \\\\ \_____  \ \  \\\\\  \ \  \    ')
+        print('  \ \  \\\\\  \\\\|____|\  \ \  \\\\\  \ \__\   ')
+        print('   \ \_____  \ ____\_\  \ \_______\|__|   ')
+        print('    \|___| \__\\\\_________\|_______|   ___ ')
+        print('          \|__\|_________|           |\__\\')
+        print('                                     \|__|')
     except Exception as e:
         print(e)
         p = None

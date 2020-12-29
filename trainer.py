@@ -250,6 +250,11 @@ class RainbowTrainer:
 
         self.optimizer = torch.optim.Adam(self.network.parameters(), lr=self.lr, eps=eps)
 
+        self.running_loss = 0.0
+        self.running_counter = 0
+        self.plotter = utils.info_plot.LivePlot(min_y=0, max_y=20.0, num_points=500, y_axis='Average loss')
+        self.avg_reward_plotter = utils.info_plot.LivePlot(min_y=-10, max_y=250, window_x=1270, num_points=500, y_axis='Episode reward', x_axis='Number of episodes')
+
     def update_target_net(self):  # used to copy weights in online network to the target regularly
         self.target_network.load_state_dict(self.network.state_dict())
 
@@ -299,7 +304,12 @@ class RainbowTrainer:
         (weight_batch * loss).mean().backward()  # Backpropagate importance-weighted minibatch loss
         torch.nn.utils.clip_grad_norm_(self.network.parameters(), self.norm_clip)
         self.optimizer.step()
-
+        self.running_loss += loss.sum()
+        if self.running_counter % 200 == 0:
+            self.plotter.step(self.running_loss/200)
+            self.plotter.show()
+            self.running_loss = 0.0
+        self.running_counter += 1
         self.memory.update_priorities(idx_batch, loss.detach().cpu().numpy())
 
     def save(self, path, memory_path):  # Save weights to hard disk

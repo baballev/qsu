@@ -1,9 +1,13 @@
+import pickle
 from random import random, randint
 import torch
 import time
 import pyautogui
 import gc
+import numpy as np
 from threading import Thread
+
+from tqdm import tqdm
 
 import environment
 from trainer import QTrainer, RainbowTrainer
@@ -161,7 +165,7 @@ def trainQNetwork(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights
 
 
 def RainbowManiaTrain(lr=0.00005, batch_size=32, gamma=0.999, omega=0.5, beta=0.4, sigma=0.1, eps=1.5e-4, n=3, atoms=51,
-                      max_timestep=50000000, learn_start=100000, stack_size=4, norm_clip=10.0, save_freq=50000,
+                      max_timestep=int(5e7), learn_start=100000, stack_size=4, norm_clip=10.0, save_freq=50000,
                       model_save_path='weights/Rainbow_test', memory_save_path='weights/memory.zip', target_update_freq=80000,
                       star=4, beatmap_name=None, width=380, height=600, skip_pixels=4, num_actions=128, no_fail=False,
                       load_weights=None, load_memory=None):
@@ -172,30 +176,37 @@ def RainbowManiaTrain(lr=0.00005, batch_size=32, gamma=0.999, omega=0.5, beta=0.
     trainer = RainbowTrainer(env, batch_size=batch_size, lr=lr, gamma=gamma, omega=omega, beta=beta, sigma=sigma, n=n,
                              eps=eps, atoms=atoms, norm_clip=norm_clip, load_weights=load_weights, load_memory=load_memory)
 
+    stat = {'episode_reward': []}
     reward = 0.0
     need_save = False
     done = True
-    start = time.time()
     count = 0
     thread = None
-    for t in range(max_timestep):
+    for t in tqdm(range(max_timestep), desc="Timestep", unit='step', unit_scale=True):
         if done:
             if t > 0:
-                end = time.time()
-                print("%.4f steps/s" % ((t-count)/(end - start)))
-                count = t
+                count += 1
+                trainer.avg_reward_plotter.step(episode_reward)
+                trainer.avg_reward_plotter.show()
+                stat['episode_reward'].append(episode_reward.item())
+                if count % 25 == 0:
+                    print('   -  Mean reward over last 100 episodes: %.4f' % np.array(stat['episode_reward'][max(-100, -len(stat['episode_reward'])):]).mean())
             if need_save:
                 trainer.save(model_save_path + str(t) + ".pt", memory_save_path)
+                with open('stats.pkl', 'wb') as f:
+                    pickle.dump(stat, f, protocol=4)
                 need_save = False
 
+            episode_reward = 0.0
+            gc.collect()
             state = env.reset(reward)
             env.launch_episode(reward)
-            start = time.time()
 
         trainer.reset_noise()
         action = trainer.select_action(state)
         next_state, reward, done = env.step(action)
         reward = max(min(reward, 1.0), -1.0)  # Reward clipping
+        episode_reward += reward
         if env.episode_counter > 0:  # Skip first episode because of latency issues
             trainer.memory.append(state[-1], action, reward, done)
 
@@ -223,5 +234,4 @@ if __name__ == '__main__':
                   initial_p=1.0, end_p=0.05, decay_p=4000000, target_update=30000, init_k=0, min_experience=50)
     '''
     RainbowManiaTrain(star=4, beatmap_name="todestrieb", num_actions=2**4, model_save_path="weights/Rainbow_Mania_",
-                      learn_start=150, #load_weights="weights/Rainbow_Mania_1001.pt", load_memory="weights/memory.pt"
-                        )
+                      learn_start=300, load_weights=None, load_memory=None, batch_size=20, max_timestep=int(2e7))

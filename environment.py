@@ -5,7 +5,6 @@ import pyclick
 import gym
 import torch
 import win32api, win32con
-from random import randint
 from threading import Thread
 from gym import spaces
 
@@ -200,8 +199,6 @@ class OsuEnv(gym.Env):
         self.history[-1] = utils.screen.get_game_screen(self.screen, skip_pixels=self.skip_pixels).sum(0, keepdim=True) / 3.0
 
 
-
-
 class ManiaEnv(gym.Env):  # Environment use to play the osu! mania mode (only keyboard, no mouse move involved)
     def __init__(self, width=1024, height=600, stack_size=4, star=4, beatmap_name=None, skip_pixels=4, num_actions=128,
                  no_fail=False, acc_threshold=1.0):
@@ -234,6 +231,7 @@ class ManiaEnv(gym.Env):  # Environment use to play the osu! mania mode (only ke
 
         self.steps = 0  # Number of steps into episode tracker
         self.episode_counter = 0
+        self.last_action = None
 
         utils.osu_routines.move_to_songs(star=star)
         if beatmap_name is not None:
@@ -302,7 +300,7 @@ class ManiaEnv(gym.Env):  # Environment use to play the osu! mania mode (only ke
         if acc > self.previous_acc:  # If the accuracy increased, positive reward
             bonus = torch.tensor(0.3, device=device)
         elif acc < self.previous_acc:  # If accuracy decreased, negative reward
-            bonus = torch.tensor(-0.3, device=device)
+            bonus = torch.tensor(-0.2, device=device)
         else:  # If accuracy remained the same (no change)
             if self.no_fail:  # If the no fail mode is enabled
                 if acc < self.acc_threshold:  # If accuracy is very low (like 0.0%), negative reward
@@ -316,9 +314,10 @@ class ManiaEnv(gym.Env):  # Environment use to play the osu! mania mode (only ke
     def step(self, action):  # TODO: Important note: problem with d3dshot, need to make a pull request and fix issue because taking 2
         self.steps += 1      # TODO: screenshots consecutively doesnt work, there need to be a small sleep
         self.perform_actions(action)
+        self.last_action = action
         for i in range(len(self.history)-1):
             self.history[i] = self.history[i+1]  # Update history
-        time.sleep(0.025)  # Frequency play regulator, wait a bit after action has been performed before observing
+        time.sleep(0.015)  # Frequency play regulator, wait a bit after action has been performed before observing
         self.history[-1] = utils.screen.get_game_screen(self.screen, skip_pixels=self.skip_pixels)[:, :, self.region[0]:self.region[1]].sum(0, keepdim=True) / 3.0
         score, acc = utils.OCR.get_score_acc(self.screen, self.score_ocr, self.acc_ocr, self.window)
 
@@ -338,8 +337,6 @@ class ManiaEnv(gym.Env):  # Environment use to play the osu! mania mode (only ke
 
         return self.history.unsqueeze(0), rew, done
 
-    def render(self, t):
-        pass
 
     def threaded_screen_fetch(self):
         self.history[-1] = utils.screen.get_game_screen(self.screen, skip_pixels=self.skip_pixels)[:, :, self.region[0]:self.region[1]].sum(0, keepdim=True) / 3.0
