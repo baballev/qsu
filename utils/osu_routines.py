@@ -12,6 +12,10 @@ import pyautogui
 from utils.osu_config import OSU_FOLDER_PATH, swap_to_AI, restore_player, USERNAME, AI_NAME
 import utils.OCR
 
+## This file contains click routines that allow to navigate osu! game menus and interfaces
+## Each functions is basically a sequence of click automation using pyclick
+
+
 KEY_DICT = {' ': 0x20,
             '0': 0x30,
             '1': 0x31,
