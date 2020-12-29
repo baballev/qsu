@@ -5,6 +5,7 @@ import utils.osu_routines
 
 WINDOW_REGION = (0, 26, 1024, 626)
 GAME_REGION = (2, 26, 880, 626)
+MANIA_REGION = (140, 26, 520, 626)
 
 
 def init_screen(capture_output="pytorch_float_gpu"):
@@ -14,6 +15,10 @@ def init_screen(capture_output="pytorch_float_gpu"):
     print('Game Region capture size:')
     print(get_game_screen(capturer, skip_pixels=1).shape)
     print(get_game_screen(capturer, skip_pixels=4).shape)
+    time.sleep(0.1)
+    print('Mania Region capture size:')
+    print(str(MANIA_REGION[2] - MANIA_REGION[0]) + ' x ' + str(MANIA_REGION[3] - MANIA_REGION[1]))
+    print(str((MANIA_REGION[2] - MANIA_REGION[0]) // 4) + ' x ' + str((MANIA_REGION[3] - MANIA_REGION[1])//4))
     return capturer
 
 

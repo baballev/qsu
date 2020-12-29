@@ -3,6 +3,7 @@ import torch
 import torch.nn.functional as F
 import time
 import pickle
+import bz2
 
 import models
 import utils.noise
@@ -213,7 +214,7 @@ class QTrainer:
 
 class RainbowTrainer:
     def __init__(self, env, batch_size=32, lr=0.0001, gamma=0.999, beta=0.4, omega=0.5, sigma=0.1, eps=1.5e-4, n=3, atoms=51,
-                 Vmin=-10.0, Vmax=10.0, norm_clip=10.0, load_weights=None):
+                 Vmin=-10.0, Vmax=10.0, norm_clip=10.0, load_weights=None, load_memory=None):
         self.batch_size = batch_size
         self.lr = lr  # Optimiser's learning rate
         self.gamma = gamma  # Discount factor
@@ -229,19 +230,24 @@ class RainbowTrainer:
         self.env = env
 
         # The neural network outputting the reward distributions
-        self.network = models.DuelDQN(num_actions=env.action_space.n, atoms=self.atoms, channels=env.stack_size, std_init=sigma).to(device)
+        self.network = models.DuelDQN(width=env.width//env.skip_pixels, height=env.height//env.skip_pixels, num_actions=env.action_space.n, atoms=self.atoms, channels=env.stack_size, std_init=sigma).to(device)
         print(self.network)
 
         if load_weights is not None:  # Load weights if a path to it is provided
             self.network.load_state_dict(torch.load(load_weights))
+        if load_memory is not None:
+            with bz2.open(load_memory, 'rb') as f:
+                self.memory = pickle.load(f)
+        else:
+            # Replay Memory, 250k frames takes approximately 10 GB on my machine
+            self.memory = PrioritizedMemory(250000, priority_weight=beta, priority_exponent=omega, multi_step=n,
+                                            discount=self.gamma, history_length=env.stack_size)
 
-        self.target_network = models.DuelDQN(num_actions=env.action_space.n, atoms=self.atoms, channels=env.stack_size, std_init=sigma).to(device)
+        self.target_network = models.DuelDQN(width=env.width//env.skip_pixels, height=env.height//env.skip_pixels, num_actions=env.action_space.n, atoms=self.atoms, channels=env.stack_size, std_init=sigma).to(device)
         self.update_target_net()  # Copy online network's weight into the target
         for param in self.target_network.parameters():  # Disable gradients for computing efficiency
             param.requires_grad = False
 
-        # Replay Memory, 250k frames takes approximately 10 GB on my machine
-        self.memory = PrioritizedMemory(250000, priority_weight=beta, priority_exponent=omega, multi_step=n, discount=self.gamma, history_length=env.stack_size)
         self.optimizer = torch.optim.Adam(self.network.parameters(), lr=self.lr, eps=eps)
 
     def update_target_net(self):  # used to copy weights in online network to the target regularly
@@ -262,7 +268,7 @@ class RainbowTrainer:
         log_ps_a = log_ps[range(self.batch_size), action_batch]
 
         with torch.no_grad():
-            pns = self.net(next_state_batch)  # Probabilities p(s_t+n, ·; θonline)
+            pns = self.network(next_state_batch)  # Probabilities p(s_t+n, ·; θonline)
             dns = self.support.expand_as(pns) * pns  # Distribution d_t+n = (z, p(s_t+n, ·; θonline))
             argmax_idx_ns = dns.sum(2).argmax(1)  # Perform argmax action selection using online network: argmax_a[(z, p(s_t+n, a; θonline))]
             self.target_network.reset_noise()
@@ -296,8 +302,11 @@ class RainbowTrainer:
 
         self.memory.update_priorities(idx_batch, loss.detach().cpu().numpy())
 
-    def save(self, path):  # Save weights to hard disk
+    def save(self, path, memory_path):  # Save weights to hard disk
         torch.save(self.network.state_dict(), path)  # TODO: ADD memory save
+        with bz2.open(memory_path, 'wb') as f:
+            pickle.dump(self.memory, f, protocol=4)
+        print("Saved model: " + path + " , and memory to: " + memory_path)
 
 
 if __name__ == '__main__':

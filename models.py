@@ -232,13 +232,13 @@ class DuelDQN(nn.Module):
 
         self.conv1 = nn.Conv2d(channels, 32, kernel_size=8, stride=4)
         self.conv2 = nn.Conv2d(32, 64, kernel_size=4, stride=2)
-        self.conv3 = nn.Conv2d(64, 64, kernel_size=4, stride=2)
+        self.conv3 = nn.Conv2d(64, 64, kernel_size=3, stride=1)
 
         def conv2d_size_out(size, kernel_size=5, stride=2):
             return (size - (kernel_size - 1) - 1) // stride + 1
 
-        convw = conv2d_size_out(conv2d_size_out(conv2d_size_out(width, kernel_size=8, stride=4), kernel_size=4, stride=2), kernel_size=4, stride=2)
-        convh = conv2d_size_out(conv2d_size_out(conv2d_size_out(height, kernel_size=8, stride=4), kernel_size=4, stride=2), kernel_size=4, stride=2)
+        convw = conv2d_size_out(conv2d_size_out(conv2d_size_out(width, kernel_size=8, stride=4), kernel_size=4, stride=2), kernel_size=3, stride=1)
+        convh = conv2d_size_out(conv2d_size_out(conv2d_size_out(height, kernel_size=8, stride=4), kernel_size=4, stride=2), kernel_size=3, stride=1)
 
         self.nfc4_v = NoisyLinear(convh * convw * 64, 1024, std_init=std_init).to(device)
         self.nfc5_v = NoisyLinear(1024, self.atoms, std_init=std_init).to(device)
@@ -246,6 +246,10 @@ class DuelDQN(nn.Module):
         self.nfc5_a = NoisyLinear(1024, self.num_actions * self.atoms, std_init=std_init).to(device)
 
     def forward(self, x, log=False):
+        global counting
+        if counting % 20 == 15:
+            transforms.ToPILImage()(x[0]).save('truc_bis_state.' + str(counting) + '.png')
+        counting += 1
         x = F.relu(self.conv1(x))
         x = F.relu(self.conv2(x))
         x = F.relu(self.conv3(x))

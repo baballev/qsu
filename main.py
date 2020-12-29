@@ -161,45 +161,50 @@ def trainQNetwork(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights
 
 
 def RainbowManiaTrain(lr=0.00005, batch_size=32, gamma=0.999, omega=0.5, beta=0.4, sigma=0.1, eps=1.5e-4, n=3, atoms=51,
-                      max_timesteps=50000000, learn_start=100000, stack_size=4, norm_clip=10, save_freq=50000,
-                      save_path='weights/Rainbow_test', target_update_freq=80000, star=4, beatmap_name=None,
-                      width=1024, height=600, skip_pixels=4, num_actions=128, no_fail=False):
-    priority_weight_increase = (1 - beta) / (max_timesteps - learn_start)
+                      max_timestep=50000000, learn_start=100000, stack_size=4, norm_clip=10.0, save_freq=50000,
+                      model_save_path='weights/Rainbow_test', memory_save_path='weights/memory.zip', target_update_freq=80000,
+                      star=4, beatmap_name=None, width=380, height=600, skip_pixels=4, num_actions=128, no_fail=False,
+                      load_weights=None, load_memory=None):
 
+    priority_weight_increase = (1 - beta) / (max_timestep - learn_start)
     env = environment.ManiaEnv(height=height, width=width, stack_size=stack_size, star=star, beatmap_name=beatmap_name,
                                num_actions=num_actions, skip_pixels=skip_pixels, no_fail=no_fail)
     trainer = RainbowTrainer(env, batch_size=batch_size, lr=lr, gamma=gamma, omega=omega, beta=beta, sigma=sigma, n=n,
-                             eps=eps, atoms=atoms, norm_clip=norm_clip)
+                             eps=eps, atoms=atoms, norm_clip=norm_clip, load_weights=load_weights, load_memory=load_memory)
 
     reward = 0.0
     need_save = False
     done = True
     start = time.time()
     count = 0
-    for t in range(max_timesteps):
+    thread = None
+    for t in range(max_timestep):
         if done:
             if t > 0:
                 end = time.time()
-                print((t-count)/(end - start))
+                print("%.4f steps/s" % ((t-count)/(end - start)))
                 count = t
+            if need_save:
+                trainer.save(model_save_path + str(t) + ".pt", memory_save_path)
+                need_save = False
+
             state = env.reset(reward)
             env.launch_episode(reward)
-            if need_save:
-                trainer.save(save_path + str(t) + ".pt")
-                need_save = False
-                # TODO: Memory saving with bz2
-
             start = time.time()
 
         trainer.reset_noise()
         action = trainer.select_action(state)
         next_state, reward, done = env.step(action)
         reward = max(min(reward, 1.0), -1.0)  # Reward clipping
-        trainer.memory.append(state[-1], action, reward, done)
+        if env.episode_counter > 0:  # Skip first episode because of latency issues
+            trainer.memory.append(state[-1], action, reward, done)
 
         if t >= learn_start:
             trainer.memory.priority_weight = min(trainer.memory.priority_weight + priority_weight_increase, 1)
-            trainer.optimize()
+            if thread is not None:
+                thread.join()
+            thread = Thread(target=trainer.optimize)
+            thread.start()
 
         if t % target_update_freq == 0 and t > 0:
             trainer.update_target_net()
@@ -217,4 +222,6 @@ if __name__ == '__main__':
                   save_name=save_name, batch_size=BATCH_SIZE, human_off_policy=False, no_fail=True,
                   initial_p=1.0, end_p=0.05, decay_p=4000000, target_update=30000, init_k=0, min_experience=50)
     '''
-    RainbowManiaTrain(star=4, beatmap_name="todestrieb", num_actions=2**4, no_fail=True)
+    RainbowManiaTrain(star=4, beatmap_name="todestrieb", num_actions=2**4, model_save_path="weights/Rainbow_Mania_",
+                      learn_start=150, #load_weights="weights/Rainbow_Mania_1001.pt", load_memory="weights/memory.pt"
+                        )
