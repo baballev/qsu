@@ -15,42 +15,6 @@ import utils.osu_routines
 
 SCORE_REGION = (875, 27, 1019, 54)
 SCORE_ACCURACY_REGION = (875, 27, 1019, 77)
-HIDE_CHAT_REGION = (971, 611, 1018, 626)  # Obsolete
-
-
-'''
-def invert_convert(screen):
-    img = torchvision.transforms.ToPILImage()(screen.detach().permute(2, 0, 1).cpu()).convert('L')
-    return ImageOps.invert(img)
-
-
-def get_score(screen):
-    tmp = screen.screenshot(region=SCORE_REGION)
-    img = invert_convert(tmp).point(lambda x: 0 if x < 110 else x, 'L')
-    s = pytesseract.image_to_string(img, config='--psm 7 --oem 1 -c tessedit_char_whitelist=0123456789')
-    if s == '\x0c':
-        return -1  # ToDo: do something about this
-    else:
-        torchvision.transforms.ToPILImage()(tmp.detach().permute(2, 0, 1).cpu()).save(s.split('\n\x0c')[0] + '.png')
-        # if s > 10000:
-        #     img.save('truc' + str(s) + '.png')
-        return int(s)
-
-
-def get_accuracy(screen):
-    img = utils.screen.get_screen_region(screen, ACCURACY_REGION)
-    img = invert_convert(img)
-    s = pytesseract.image_to_string(img, config='--psm 7 -c tessedit_char_whitelist=,0123456789')
-    s = s.split(',')
-    return float(s[0] + '.' + s[1])
-
-
-def check_stuck_social(screen):
-    img = utils.screen.get_screen_region(screen, HIDE_CHAT_REGION)
-    img = invert_convert(img)
-    s = pytesseract.image_to_string(img, config='--psm 7 -c tessedit_char_whitelist=HideChathSow')
-    return s[:8] == "HideChat"
-'''
 
 
 class ScoreDataset(torch.utils.data.Dataset):

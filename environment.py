@@ -201,7 +201,8 @@ class OsuEnv(gym.Env):
 
 
 class ManiaEnv(gym.Env):
-    def __init__(self, width=1024, height=600, stack_size=4, star=4, beatmap_name=None, skip_pixels=4, num_actions=128):
+    def __init__(self, width=1024, height=600, stack_size=4, star=4, beatmap_name=None, skip_pixels=4, num_actions=128,
+                 no_fail=False):
         super(ManiaEnv, self).__init__()
         self.stack_size = stack_size
 
@@ -218,8 +219,8 @@ class ManiaEnv(gym.Env):
 
         self.star = star
         self.beatmap_name = beatmap_name
+        self.no_fail = no_fail
         self.skip_pixels = skip_pixels
-        self.first = True
 
         self.previous_score = None
         self.previous_acc = None
@@ -230,20 +231,22 @@ class ManiaEnv(gym.Env):
         utils.osu_routines.move_to_songs(star=star)
         if beatmap_name is not None:
             utils.osu_routines.select_beatmap(beatmap_name)
+        if self.no_fail:
+            utils.osu_routines.enable_nofail()
 
-    def perform_actions(self, control):  # Control in [0, 127=2**7-1]
+    def perform_actions(self, control):  # Control in [0, 127=2**7-1] or [0, 15]
         n = math.floor(math.log2(self.action_space.n))
-        l = [0 for _ in range(n)]
+        key_encoding = [0 for _ in range(n)]
         q, r = divmod(control, 2**(n - 1))
         i = 0
-        l[i] = q
+        key_encoding[i] = q
         for _ in range(n-1):
             i += 1
             q, r = divmod(r, 2**(n - (i+1)))
-            l[i] = q
+            key_encoding[i] = q
         if n == 7:
             for i, key in enumerate(self.key_dict.keys()):
-                if l[i]:
+                if key_encoding[i]:
                     win32api.keybd_event(self.key_dict[key], 0, 0, 0)
                 else:
                     win32api.keybd_event(self.key_dict[key], 0, win32con.KEYEVENTF_KEYUP, 0)
@@ -251,8 +254,7 @@ class ManiaEnv(gym.Env):
             for i, key in enumerate(self.key_dict.keys()):
                 if i >= 4:
                     break
-
-                if l[i]:
+                if key_encoding[i]:
                     win32api.keybd_event(self.key_dict[key], 0, 0, 0)
                 else:
                     win32api.keybd_event(self.key_dict[key], 0, win32con.KEYEVENTF_KEYUP, 0)
@@ -295,13 +297,13 @@ class ManiaEnv(gym.Env):
             bonus = torch.tensor(-0.3, device=device)
         else:
             bonus = torch.tensor(0.1, device=device)
-        return torch.clamp(0.1*torch.log10(max((score - self.previous_score),
-                                               torch.tensor(1.0, device=device))) + bonus, -1, 1)
+        return 0.1 * torch.log10(torch.tensor(max((score - self.previous_score), 1.0), device=device)) + bonus
 
     def step(self, action):
         self.steps += 1
         self.perform_actions(action)
         time.sleep(0.025)
+
         for i in range(len(self.history)-1):
             self.history[i] = self.history[i+1]
 
@@ -319,7 +321,7 @@ class ManiaEnv(gym.Env):
             done = True
             rew = torch.tensor(-1.0, device=device)
         else:
-            rew = self.get_reward(score, acc)  # TODO: remove step?
+            rew = self.get_reward(score, acc)
         self.previous_acc = acc
         self.previous_score = score
 

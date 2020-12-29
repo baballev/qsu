@@ -231,7 +231,6 @@ class RainbowTrainer:
         self.network = models.DuelDQN(num_actions=env.action_space.n, atoms=self.atoms, channels=env.stack_size, std_init=sigma).to(device)
         print(self.network)
 
-
         if load_weights is not None:
             self.network.load_state_dict(torch.load(load_weights))
 
