@@ -313,7 +313,7 @@ class ManiaEnv(gym.Env):  # Environment use to play the osu! mania mode (only ke
         return 0.1 * torch.log10(torch.tensor(max((score - self.previous_score), 1.0), device=device)) + bonus
         '''
         if score > self.previous_score:
-            return torch.tensor(1.0, device=device)
+            return torch.tensor((self.score - self.previous_score)/2000, device=device)
         else:
             return torch.tensor(0.0, device=device)
 
