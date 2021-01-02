@@ -168,7 +168,7 @@ def RainbowManiaTrain(lr=0.00005, batch_size=32, gamma=0.999, omega=0.5, beta=0.
                       max_timestep=int(5e7), learn_start=100000, stack_size=4, norm_clip=10.0, save_freq=50000,
                       model_save_path='weights/Rainbow_test', memory_save_path='weights/memory.zip', target_update_freq=80000,
                       star=4, beatmap_name=None, width=380, height=600, skip_pixels=4, num_actions=128, no_fail=False,
-                      load_weights=None, load_memory=None, Vmin=-1, Vmax=10, resume_start=0, load_stats=None):
+                      load_weights=None, load_memory=None, Vmin=-1, Vmax=15, resume_start=0, load_stats=None):
 
     priority_weight_increase = (1 - beta) / (max_timestep - learn_start - resume_start)
     env = environment.ManiaEnv(height=height, width=width, stack_size=stack_size, star=star, beatmap_name=beatmap_name,
@@ -193,6 +193,7 @@ def RainbowManiaTrain(lr=0.00005, batch_size=32, gamma=0.999, omega=0.5, beta=0.
                 count += 1
                 trainer.avg_reward_plotter.step(episode_reward)
                 trainer.avg_reward_plotter.show()
+                trainer.plotter.show()
                 stat['episode_reward'].append(episode_reward.item())
                 if count % 25 == 0:
                     print('   -  Mean reward over last 100 episodes: %.4f' % np.array(stat['episode_reward'][max(-100, -len(stat['episode_reward'])):]).mean())
@@ -238,5 +239,7 @@ if __name__ == '__main__':
                   save_name=save_name, batch_size=BATCH_SIZE, human_off_policy=False, no_fail=True,
                   initial_p=1.0, end_p=0.05, decay_p=4000000, target_update=30000, init_k=0, min_experience=50)
     '''
-    RainbowManiaTrain(star=3, beatmap_name="todestrieb", num_actions=2**4, model_save_path="weights/Rainbow_Mania_",
-                      learn_start=1500, load_weights=None, load_memory=None, batch_size=20, max_timestep=int(2e7))
+    RainbowManiaTrain(star=4, beatmap_name="todestrieb", num_actions=2**4, model_save_path="weights/Rainbow_Mania_",
+                      learn_start=1500, load_weights='./weights/Rainbow_Mania_2000067.pt', load_memory='./weights/memory.zip', batch_size=20, max_timestep=int(2e7),
+                      memory_save_path='./weights/memory.zip', Vmin=-10, Vmax=10, resume_start=int(2e6), target_update_freq=40000,
+                      load_stats='./stats_first.pkl')

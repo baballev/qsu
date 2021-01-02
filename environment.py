@@ -297,7 +297,7 @@ class ManiaEnv(gym.Env):  # Environment use to play the osu! mania mode (only ke
         return self.history.unsqueeze(0)
 
     def get_reward(self, score, acc):
-        '''
+
         if acc > self.previous_acc:  # If the accuracy increased, positive reward
             bonus = torch.tensor(0.3, device=device)
         elif acc < self.previous_acc:  # If accuracy decreased, negative reward
@@ -313,9 +313,10 @@ class ManiaEnv(gym.Env):  # Environment use to play the osu! mania mode (only ke
         return 0.1 * torch.log10(torch.tensor(max((score - self.previous_score), 1.0), device=device)) + bonus
         '''
         if score > self.previous_score:
-            return torch.tensor((self.score - self.previous_score)/2000, device=device)
+            return torch.tensor((self.score - self.previous_score)/2000.0, device=device)
         else:
             return torch.tensor(0.0, device=device)
+        '''
 
     def step(self, action):  # TODO: Important note: problem with d3dshot, need to make a pull request and fix issue because taking 2
         self.steps += 1      # TODO: screenshots consecutively doesnt work, there need to be a small sleep

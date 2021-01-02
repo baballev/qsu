@@ -307,7 +307,7 @@ class RainbowTrainer:
         self.running_loss += (loss.sum()/20)
         if self.running_counter % 50 == 0:
             self.plotter.step(self.running_loss/50)
-            self.plotter.show()
+            #self.plotter.show()
             self.running_loss = 0.0
         self.running_counter += 1
         self.memory.update_priorities(idx_batch, loss.detach().cpu().numpy())
