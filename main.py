@@ -168,21 +168,26 @@ def RainbowManiaTrain(lr=0.00005, batch_size=32, gamma=0.999, omega=0.5, beta=0.
                       max_timestep=int(5e7), learn_start=100000, stack_size=4, norm_clip=10.0, save_freq=50000,
                       model_save_path='weights/Rainbow_test', memory_save_path='weights/memory.zip', target_update_freq=80000,
                       star=4, beatmap_name=None, width=380, height=600, skip_pixels=4, num_actions=128, no_fail=False,
-                      load_weights=None, load_memory=None):
+                      load_weights=None, load_memory=None, Vmin=-1, Vmax=10, resume_start=0, load_stats=None):
 
-    priority_weight_increase = (1 - beta) / (max_timestep - learn_start)
+    priority_weight_increase = (1 - beta) / (max_timestep - learn_start - resume_start)
     env = environment.ManiaEnv(height=height, width=width, stack_size=stack_size, star=star, beatmap_name=beatmap_name,
                                num_actions=num_actions, skip_pixels=skip_pixels, no_fail=no_fail)
     trainer = RainbowTrainer(env, batch_size=batch_size, lr=lr, gamma=gamma, omega=omega, beta=beta, sigma=sigma, n=n,
-                             eps=eps, atoms=atoms, norm_clip=norm_clip, load_weights=load_weights, load_memory=load_memory)
+                             eps=eps, atoms=atoms, norm_clip=norm_clip, load_weights=load_weights, load_memory=load_memory,
+                             Vmin=Vmin, Vmax=Vmax)
+    if load_stats is None:
+        stat = {'episode_reward': []}
+    else:
+        with open(load_stats, 'rb') as f:
+            stat = pickle.load(f)
 
-    stat = {'episode_reward': []}
     reward = 0.0
     need_save = False
     done = True
     count = 0
     thread = None
-    for t in tqdm(range(max_timestep), desc="Timestep", unit='step', unit_scale=True):
+    for t in tqdm(range(resume_start, max_timestep), desc="Timestep", unit='step', unit_scale=True):
         if done:
             if t > 0:
                 count += 1
@@ -233,5 +238,5 @@ if __name__ == '__main__':
                   save_name=save_name, batch_size=BATCH_SIZE, human_off_policy=False, no_fail=True,
                   initial_p=1.0, end_p=0.05, decay_p=4000000, target_update=30000, init_k=0, min_experience=50)
     '''
-    RainbowManiaTrain(star=4, beatmap_name="todestrieb", num_actions=2**4, model_save_path="weights/Rainbow_Mania_",
-                      learn_start=300, load_weights=None, load_memory=None, batch_size=20, max_timestep=int(2e7))
+    RainbowManiaTrain(star=3, beatmap_name="todestrieb", num_actions=2**4, model_save_path="weights/Rainbow_Mania_",
+                      learn_start=1500, load_weights=None, load_memory=None, batch_size=20, max_timestep=int(2e7))
