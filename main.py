@@ -187,15 +187,16 @@ def RainbowManiaTrain(lr=0.00005, batch_size=32, gamma=0.999, omega=0.5, beta=0.
     done = True
     count = 0
     thread = None
+
     for t in tqdm(range(resume_start, max_timestep), desc="Timestep", unit='step', unit_scale=True):
         if done:
-            if t > 0:
+            if t > resume_start:
                 count += 1
                 trainer.avg_reward_plotter.step(episode_reward)
                 trainer.avg_reward_plotter.show()
                 trainer.plotter.show()
                 stat['episode_reward'].append(episode_reward.item())
-                if count % 25 == 0:
+                if count % 100 == 0:
                     print('   -  Mean reward over last 100 episodes: %.4f' % np.array(stat['episode_reward'][max(-100, -len(stat['episode_reward'])):]).mean())
             if need_save:
                 trainer.save(model_save_path + str(t) + ".pt", memory_save_path)
@@ -240,6 +241,6 @@ if __name__ == '__main__':
                   initial_p=1.0, end_p=0.05, decay_p=4000000, target_update=30000, init_k=0, min_experience=50)
     '''
     RainbowManiaTrain(star=4, beatmap_name="todestrieb", num_actions=2**4, model_save_path="weights/Rainbow_Mania_",
-                      learn_start=1500, load_weights='./weights/Rainbow_Mania_2000067.pt', load_memory='./weights/memory.zip', batch_size=20, max_timestep=int(2e7),
+                      learn_start=1500, load_weights='./weights/Jan2021/Rainbow_Mania_2000067.pt', load_memory='./weights/memory.zip', batch_size=20, max_timestep=int(2e7),
                       memory_save_path='./weights/memory.zip', Vmin=-10, Vmax=10, resume_start=int(2e6), target_update_freq=40000,
                       load_stats='./stats_first.pkl')

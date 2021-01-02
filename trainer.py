@@ -252,8 +252,8 @@ class RainbowTrainer:
 
         self.running_loss = 0.0
         self.running_counter = 0
-        self.plotter = utils.info_plot.LivePlot(min_y=0, max_y=10.0, num_points=500, y_axis='Average loss')
-        self.avg_reward_plotter = utils.info_plot.LivePlot(min_y=-10, max_y=250, window_x=1270, num_points=500, y_axis='Episode reward', x_axis='Number of episodes')
+        self.plotter = utils.info_plot.LivePlot(min_y=0, max_y=5.0, num_points=500, y_axis='Average loss')
+        self.avg_reward_plotter = utils.info_plot.LivePlot(min_y=-10, max_y=100, window_x=1270, num_points=500, y_axis='Episode reward', x_axis='Number of episodes')
 
     def update_target_net(self):  # used to copy weights in online network to the target regularly
         self.target_network.load_state_dict(self.network.state_dict())
