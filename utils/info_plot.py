@@ -1,3 +1,5 @@
+import pickle
+
 import matplotlib.pyplot as plt
 import time
 import numpy as np
@@ -70,27 +72,16 @@ class LivePlot:
 
 
 if __name__ == '__main__':
-    '''
     fig = plt.figure()
-    ax = fig.add_subplot(111)
-    plt.ylim(-1.5, 1.5)
-    start = time.time()
-    t = time.time()
-    x = np.linspace(t - start - 300, t - start, 2500)
-    #y = np.zeros_like(np.linspace(-300, 5, 25000))
-    y = [0 for _ in range(2500)]
-    line, = ax.plot(x, y)
-    fig.show()
-    time.sleep(0.2)
+    with open('../stats.pkl', 'rb') as f:
+        stats = pickle.load(f)
+    ax = plt.subplot(111)
+    n = len(stats['episode_reward'])
+    x = np.arange(0, n, 1)
+    y = np.array(stats['episode_reward'])
+    ax.plot(x, y)
+    y2 = np.convolve(y, np.ones(25), 'valid')/25
+    ax.plot(x[:-24], y2)
+    plt.show()
 
-    for i in range(10000):
-        t = time.time()
-        #x = np.linspace(t-start-300, t-start, 2500)
-        y.append(np.sin(t/3))
-        y.pop(0)
-        line.set_ydata(y)
-        fig.canvas.draw()
-        fig.canvas.flush_events()
-    '''
-    pass
 

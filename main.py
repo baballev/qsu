@@ -241,6 +241,6 @@ if __name__ == '__main__':
                   initial_p=1.0, end_p=0.05, decay_p=4000000, target_update=30000, init_k=0, min_experience=50)
     '''
     RainbowManiaTrain(star=4, beatmap_name="todestrieb", num_actions=2**4, model_save_path="weights/Rainbow_Mania_",
-                      learn_start=1500, load_weights='./weights/Jan2021/Rainbow_Mania_2000067.pt', load_memory='./weights/memory.zip', batch_size=20, max_timestep=int(2e7),
-                      memory_save_path='./weights/memory.zip', Vmin=-10, Vmax=10, resume_start=int(2e6), target_update_freq=40000,
-                      load_stats='./stats_first.pkl')
+                      learn_start=1500, load_weights='./weights/Jan2021/Rainbow_Mania_2250035.pt', load_memory='./weights/memory.zip', batch_size=20, max_timestep=int(2e7),
+                      memory_save_path='./weights/memory.zip', Vmin=-10, Vmax=10, resume_start=2400000, target_update_freq=40000,
+                      load_stats='./stats.pkl')
