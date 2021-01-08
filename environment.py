@@ -329,7 +329,7 @@ class ManiaEnv(gym.Env):  # Environment use to play the osu! mania mode (only ke
         self.history[-1] = utils.screen.get_game_screen(self.screen, skip_pixels=self.skip_pixels)[:, :, self.region[0]:self.region[1]].sum(0, keepdim=True) / 3.0
         score, acc = utils.OCR.get_score_acc(self.screen, self.score_ocr, self.acc_ocr, self.window)
 
-        if (self.steps < 25 and score == -1) or (score - self.previous_score > 5 * (self.previous_score + 100)):
+        if self.steps < 25 and score == -1:
             score = self.previous_score  # If the OCR failed to read the score, set it to the previous score
         if self.steps < 25 and acc == -1:  # Score/Accuracy Reading problems often occur during the first 25 first frames
             acc = self.previous_acc  # If the OCR failed to read the accuracy at the beginning of the map, keep it at the same value
@@ -344,7 +344,6 @@ class ManiaEnv(gym.Env):  # Environment use to play the osu! mania mode (only ke
         self.previous_score = score
 
         return self.history.unsqueeze(0), rew, done
-
 
     def threaded_screen_fetch(self):
         self.history[-1] = utils.screen.get_game_screen(self.screen, skip_pixels=self.skip_pixels)[:, :, self.region[0]:self.region[1]].sum(0, keepdim=True) / 3.0
