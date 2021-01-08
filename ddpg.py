@@ -41,7 +41,7 @@ Y_DISCRETE = (560 - 54) // DISCRETE_FACTOR + 1
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-## IMPORTANT NOTE: THE LARGE MAJORITY of the code was taken or inspired from:
+## IMPORTANT NOTE: THE LARGE MAJORITY of the code in this file was taken or inspired from:
 ## https://github.com/vy007vikas/PyTorch-ActorCriticRL/
 ## All credits go to vy007vikas for the nice Pytorch continuous action actor-critic DDPG she/he/they made.
 
@@ -228,4 +228,3 @@ if __name__ == '__main__':
     save_name = '_13-12-2020-'
 
     trainDDPG(100, LEARNING_RATE, save_name=save_name, load_weights=None, beatmap_name="bongo", star=2)
-

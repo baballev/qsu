@@ -242,7 +242,7 @@ def return_to_beatmap():
 def shut_annoying_window():
     hc = pyclick.HumanClicker()
     time.sleep(1)
-    hc.move((1390, 782), 0.8)
+    hc.move((1390, 792), 0.8)
     time.sleep(0.1)
     hc.click()
     return

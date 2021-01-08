@@ -233,6 +233,8 @@ class ManiaEnv(gym.Env):  # Environment use to play the osu! mania mode (only ke
         self.episode_counter = 0
         self.last_action = None
 
+        self.lose_reward = -0.1
+
         utils.osu_routines.move_to_songs(star=star)
         if beatmap_name is not None:
             utils.osu_routines.select_beatmap(beatmap_name)
@@ -265,7 +267,7 @@ class ManiaEnv(gym.Env):  # Environment use to play the osu! mania mode (only ke
                     win32api.keybd_event(self.key_dict[key], 0, win32con.KEYEVENTF_KEYUP, 0)  # Release keyboard button
 
     def launch_episode(self, reward):  # Combination of routines to launch the beatmap or restart it if failed
-        if reward != -1:
+        if reward != self.lose_reward:
             if self.beatmap_name is not None:
                 utils.osu_routines.launch_selected_beatmap()
             else:
@@ -277,7 +279,7 @@ class ManiaEnv(gym.Env):  # Environment use to play the osu! mania mode (only ke
 
     def reset(self, reward=0.0):
         if self.steps != 0:  # If this is not the beginning of training
-            if reward != -1.0:  # When no_fail = False, if the agent fails the map he gets a -1.0 reward
+            if reward != self.lose_reward:  # When no_fail = False, if the agent fails the map he gets a -1.0 reward
                 utils.osu_routines.return_to_beatmap()  # If he did not get -1.0, he finished the map so return to menu
             else:
                 if self.beatmap_name is not None:
@@ -297,7 +299,7 @@ class ManiaEnv(gym.Env):  # Environment use to play the osu! mania mode (only ke
         return self.history.unsqueeze(0)
 
     def get_reward(self, score, acc):
-
+        '''
         if acc > self.previous_acc:  # If the accuracy increased, positive reward
             bonus = torch.tensor(0.3, device=device)
         elif acc < self.previous_acc:  # If accuracy decreased, negative reward
@@ -313,10 +315,9 @@ class ManiaEnv(gym.Env):  # Environment use to play the osu! mania mode (only ke
         return 0.1 * torch.log10(torch.tensor(max((score - self.previous_score), 1.0), device=device)) + bonus
         '''
         if score > self.previous_score:
-            return torch.tensor((self.score - self.previous_score)/2000.0, device=device)
+            return torch.tensor((score - self.previous_score)/2000.0, device=device)
         else:
             return torch.tensor(0.0, device=device)
-        '''
 
     def step(self, action):  # TODO: Important note: problem with d3dshot, need to make a pull request and fix issue because taking 2
         self.steps += 1      # TODO: screenshots consecutively doesnt work, there need to be a small sleep
@@ -338,7 +339,7 @@ class ManiaEnv(gym.Env):  # Environment use to play the osu! mania mode (only ke
         if not self.no_fail:
             if self.history[-1, 1, 1] > 0.0834 and self.steps > 30:  # If left hand corner pixel becomes too red -> agent failed the map
                 done = True
-                rew = torch.tensor(-1.0, device=device)  # Negative reward for failing the map
+                rew = torch.tensor(self.lose_reward, device=device)  # Negative reward for failing the map
         self.previous_acc = acc
         self.previous_score = score
 
