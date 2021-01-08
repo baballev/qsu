@@ -131,7 +131,7 @@ def get_score(screen, ocr, wndw):
     with torch.no_grad():
         score_img = utils.screen.get_screen_region(screen, region=SCORE_REGION)
         if counter % 5 == 0:
-            if not(score_img.sum()) or win32gui.GetWindowText(wndw) == 'osu!':
+            if not(score_img.sum()):# or win32gui.GetWindowText(wndw) == 'osu!':
                 return -1
 
         score_img = torch.stack([score_img[:, :, j*18:(j+1)*18] for j in range(8)], 0)
