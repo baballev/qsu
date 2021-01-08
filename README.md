@@ -1,7 +1,13 @@
 # qsu!
-A reinforcement learning agent learning to play the rhythm game osu! using Q-learning. - **Work In Progress.**  
-For now, different approaches are in the code but only the most efficient one will be kept in the end.
+A reinforcement learning agent learning to play [osu!](https://osu.ppy.sh) using Q-learning. - **Work In Progress.**  
+For now, different approaches are in the code but only the most efficient one will be kept in the end.  
 /!\ Training takes a very long time (~ 2 to 4 weeks) and is not guaranteed to work for now /!\  
+
+
+## What is osu! ?  
+[Osu!](https://osu.ppy.sh) is a free rhythm game on computer by [Peppy](https://github.com/peppy).
+
+
 
 ## Dependencies
 ToDo + setup.py
