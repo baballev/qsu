@@ -304,7 +304,7 @@ class RainbowTrainer:
         (weight_batch * loss).mean().backward()  # Backpropagate importance-weighted minibatch loss
         torch.nn.utils.clip_grad_norm_(self.network.parameters(), self.norm_clip)
         self.optimizer.step()
-        self.running_loss += (loss.sum()/20)
+        self.running_loss += (loss.sum()/self.batch_size)
         if self.running_counter % 50 == 0:
             self.plotter.step(self.running_loss/50)
             #self.plotter.show()

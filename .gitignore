@@ -14,3 +14,4 @@ memory.pck
 statistics.pkl
 pyclick_modified/
 *.pkl
+stats/

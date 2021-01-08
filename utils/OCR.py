@@ -69,14 +69,14 @@ class OCRModel(nn.Module):
         x = self.fc5(x.view(x.size(0), -1))
         return x
 
-    def train(self, weights_save='OCR_digit2.pt', mode='score', epochs=15):  # mode = 'score' or 'acc'
+    def train(self, weights_save='OCR_score3.pt', mode='score', epochs=15):  # mode = 'score' or 'acc'
         dataset = ScoreDataset('E:/Programmation/Python/qsu!/dataset/train/')
         dataloader = torch.utils.data.DataLoader(dataset, batch_size=10, shuffle=True)
         dataset2 = AccuracyDataset('E:/Programmation/Python/qsu!/dataset/train2/')
         dataloader2 = torch.utils.data.DataLoader(dataset2, batch_size=10, shuffle=True)
         valid = ScoreDataset('E:/Programmation/Python/qsu!/dataset/valid/')
         valid_loader = torch.utils.data.DataLoader(valid, batch_size=10, shuffle=True)
-        optimizer = torch.optim.Adam(self.parameters(), lr=0.001)
+        optimizer = torch.optim.Adam(self.parameters(), lr=0.0001)
         i = 0
         previous_loss = 15000000.0
         for _ in range(epochs):
@@ -129,7 +129,9 @@ counter = 0
 def get_score(screen, ocr, wndw):
     global counter
     with torch.no_grad():
+
         score_img = utils.screen.get_screen_region(screen, region=SCORE_REGION)
+        copy_score = score_img
         if counter % 5 == 0:
             if not(score_img.sum()):# or win32gui.GetWindowText(wndw) == 'osu!':
                 return -1
@@ -142,7 +144,9 @@ def get_score(screen, ocr, wndw):
         s = 0.0
         for n, indic in enumerate(indices):
             s += indic * 10**(7-n)
+
         counter += 1
+        torchvision.transforms.ToPILImage()(copy_score).save('../dataset/' + str(s.item()) + '.png')
     return s.float()
 
 
@@ -179,21 +183,27 @@ def get_score_acc(screen, ocr_score, ocr_acc, wndw):
 
 if __name__ == '__main__':
     ## DATASET MAKER
-    #utils.osu_routines.start_osu()
-    #screen = utils.screen.init_screen()
-    #while True:
-    #   get_score(screen)
-    #   time.sleep(0.5)
-
+    '''
+    process, wndw = utils.osu_routines.start_osu()
+    screen = utils.screen.init_screen()
+    ocr = OCRModel().to(device)
+    ocr.load_state_dict(torch.load('../weights/OCR/OCR_score2.pt'))
+    time.sleep(15)
+    while True:
+       get_score(screen, ocr, wndw  )
+       time.sleep(0.5)
+    '''
     ## TRAIN OCR MODEL
-    # ocr = OCRModel()
-    # ocr.train('OCR_acc2.pt', mode='acc', epochs=50)
-
+    '''
+    ocr = OCRModel()
+    ocr.train('OCR_score3.pt', mode='score', epochs=30)
+    '''
     ## GET_SCORE TESTS
+
     process, wndw = utils.osu_routines.start_osu()
     screen = utils.screen.init_screen()
 
-    ocr_score = init_OCR('../weights/OCR/OCR_score2.pt')
+    ocr_score = init_OCR('../weights/OCR/OCR_score3.pt')
     ocr_acc = init_OCR('../weights/OCR/OCR_acc2.pt')
     while True:
         time.sleep(0.5)
