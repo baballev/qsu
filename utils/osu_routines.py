@@ -260,7 +260,7 @@ def relocate():
 def restart():
     hc = pyclick.HumanClicker()
     time.sleep(3)
-    hc.move((500, 336), 1.0)
+    hc.move((600, 336), 1.0)
     time.sleep(1)
     hc.click()
     time.sleep(0.1)

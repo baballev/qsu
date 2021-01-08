@@ -164,8 +164,8 @@ def trainQNetwork(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights
     env.stop()
 
 
-def RainbowManiaTrain(lr=0.00005, batch_size=32, gamma=0.999, omega=0.5, beta=0.4, sigma=0.1, eps=1.5e-4, n=3, atoms=51,
-                      max_timestep=int(5e7), learn_start=100000, stack_size=4, norm_clip=10.0, save_freq=50000,
+def RainbowManiaTrain(lr=0.0000625, batch_size=32, gamma=0.999, omega=0.5, beta=0.4, sigma=0.1, eps=1.5e-4, n=3, atoms=51,
+                      max_timestep=int(5e7), learn_start=80000, stack_size=4, norm_clip=10.0, save_freq=50000,
                       model_save_path='weights/Rainbow_test', memory_save_path='weights/memory.zip', target_update_freq=80000,
                       star=4, beatmap_name=None, width=380, height=600, skip_pixels=4, num_actions=128, no_fail=False,
                       load_weights=None, load_memory=None, Vmin=-1, Vmax=15, resume_start=0, load_stats=None,

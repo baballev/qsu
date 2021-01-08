@@ -80,8 +80,8 @@ if __name__ == '__main__':
     x = np.arange(0, n, 1)
     y = np.array(stats['episode_reward'])
     ax.plot(x, y)
-    y2 = np.convolve(y, np.ones(25), 'valid')/25
-    ax.plot(x[:-24], y2)
+    y2 = np.convolve(y, np.ones(10), 'valid')/10
+    ax.plot(x[:-9], y2)
     plt.show()
 
 

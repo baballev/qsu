@@ -233,7 +233,7 @@ class ManiaEnv(gym.Env):  # Environment use to play the osu! mania mode (only ke
         self.episode_counter = 0
         self.last_action = None
 
-        self.lose_reward = -0.1
+        self.lose_reward = -0.3
 
         utils.osu_routines.move_to_songs(star=star)
         if beatmap_name is not None:
@@ -298,7 +298,7 @@ class ManiaEnv(gym.Env):  # Environment use to play the osu! mania mode (only ke
         self.previous_acc = torch.tensor(100.0, device=device)
         return self.history.unsqueeze(0)
 
-    def get_reward(self, score, acc):
+    def get_reward(self, score, acc=0.0):
         '''
         if acc > self.previous_acc:  # If the accuracy increased, positive reward
             bonus = torch.tensor(0.3, device=device)
@@ -315,7 +315,7 @@ class ManiaEnv(gym.Env):  # Environment use to play the osu! mania mode (only ke
         return 0.1 * torch.log10(torch.tensor(max((score - self.previous_score), 1.0), device=device)) + bonus
         '''
         if score > self.previous_score:
-            return torch.tensor((score - self.previous_score)/2000.0, device=device)
+            return torch.tensor((score - self.previous_score)/1000.0, device=device)
         else:
             return torch.tensor(0.0, device=device)
 
@@ -325,22 +325,23 @@ class ManiaEnv(gym.Env):  # Environment use to play the osu! mania mode (only ke
         self.last_action = action
         for i in range(len(self.history)-1):
             self.history[i] = self.history[i+1]  # Update history
-        time.sleep(0.015)  # Frequency play regulator, wait a bit after action has been performed before observing
+        time.sleep(0.025)  # Frequency play regulator, wait a bit after action has been performed before observing
         self.history[-1] = utils.screen.get_game_screen(self.screen, skip_pixels=self.skip_pixels)[:, :, self.region[0]:self.region[1]].sum(0, keepdim=True) / 3.0
-        score, acc = utils.OCR.get_score_acc(self.screen, self.score_ocr, self.acc_ocr, self.window)
+        #score, acc = utils.OCR.get_score_acc(self.screen, self.score_ocr, self.acc_ocr, self.window)
+        score = utils.OCR.get_score(self.screen, self.score_ocr, self.window)
 
         if self.steps < 25 and score == -1:
             score = self.previous_score  # If the OCR failed to read the score, set it to the previous score
-        if self.steps < 25 and acc == -1:  # Score/Accuracy Reading problems often occur during the first 25 first frames
-            acc = self.previous_acc  # If the OCR failed to read the accuracy at the beginning of the map, keep it at the same value
+        #if self.steps < 25 and acc == -1:  # Score/Accuracy Reading problems often occur during the first 25 first frames
+        #    acc = self.previous_acc  # If the OCR failed to read the accuracy at the beginning of the map, keep it at the same value
 
         done = (score == -1)  # When the beatmap is done, the screen becomes black, OCR detects it and returns -1
-        rew = self.get_reward(score, acc)
+        rew = self.get_reward(score)
         if not self.no_fail:
             if self.history[-1, 1, 1] > 0.0834 and self.steps > 30:  # If left hand corner pixel becomes too red -> agent failed the map
                 done = True
                 rew = torch.tensor(self.lose_reward, device=device)  # Negative reward for failing the map
-        self.previous_acc = acc
+        #self.previous_acc = acc
         self.previous_score = score
 
         return self.history.unsqueeze(0), rew, done
