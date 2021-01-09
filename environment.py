@@ -233,7 +233,7 @@ class ManiaEnv(gym.Env):  # Environment use to play the osu! mania mode (only ke
         self.episode_counter = 0
         self.last_action = None
 
-        self.lose_reward = -0.3
+        self.lose_reward = -0.1
 
         utils.osu_routines.move_to_songs(star=star)
         if beatmap_name is not None:
@@ -315,7 +315,7 @@ class ManiaEnv(gym.Env):  # Environment use to play the osu! mania mode (only ke
         return 0.1 * torch.log10(torch.tensor(max((score - self.previous_score), 1.0), device=device)) + bonus
         '''
         if score > self.previous_score:
-            return torch.tensor((score - self.previous_score)/1000.0, device=device)
+            return torch.tensor((score - self.previous_score)/2000.0, device=device)
         else:
             return torch.tensor(0.0, device=device)
 
@@ -325,7 +325,7 @@ class ManiaEnv(gym.Env):  # Environment use to play the osu! mania mode (only ke
         self.last_action = action
         for i in range(len(self.history)-1):
             self.history[i] = self.history[i+1]  # Update history
-        time.sleep(0.025)  # Frequency play regulator, wait a bit after action has been performed before observing
+        time.sleep(0.015)  # Frequency play regulator, wait a bit after action has been performed before observing
         self.history[-1] = utils.screen.get_game_screen(self.screen, skip_pixels=self.skip_pixels)[:, :, self.region[0]:self.region[1]].sum(0, keepdim=True) / 3.0
         #score, acc = utils.OCR.get_score_acc(self.screen, self.score_ocr, self.acc_ocr, self.window)
         score = utils.OCR.get_score(self.screen, self.score_ocr, self.window)

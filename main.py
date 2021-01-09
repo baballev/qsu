@@ -240,7 +240,7 @@ if __name__ == '__main__':
                   save_name=save_name, batch_size=BATCH_SIZE, human_off_policy=False, no_fail=True,
                   initial_p=1.0, end_p=0.05, decay_p=4000000, target_update=30000, init_k=0, min_experience=50)
     '''
-    RainbowManiaTrain(star=3, beatmap_name="todestrieb", num_actions=2**4, model_save_path="weights/Rainbow_todestrieb_3stars",
-                      learn_start=500, load_weights=None, load_memory=None, batch_size=20, max_timestep=int(1e7),
-                      memory_save_path='./weights/memory08-01-2021.zip', Vmin=-1, Vmax=10, resume_start=0, target_update_freq=50000,
-                      load_stats=None, save_freq=50000, save_stats='./weights/stats.pkl', learning_freq=1)
+    RainbowManiaTrain(star=3, beatmap_name="todestrieb", num_actions=2**4, model_save_path="weights/Rainbow_todestrieb-09-01-2021_3stars",
+                      learn_start=1000, load_weights=None, load_memory=None, batch_size=20, max_timestep=int(1e7),
+                      memory_save_path='./weights/memory09-01-2021.zip', Vmin=-1, Vmax=10, resume_start=0, target_update_freq=50000,
+                      load_stats=None, save_freq=50000, save_stats='./weights/stats.pkl', learning_freq=1, lr=0.00005)
