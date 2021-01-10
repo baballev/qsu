@@ -169,14 +169,16 @@ def RainbowManiaTrain(lr=0.0000625, batch_size=32, gamma=0.999, omega=0.5, beta=
                       model_save_path='weights/Rainbow_test', memory_save_path='weights/memory.zip', target_update_freq=80000,
                       star=4, beatmap_name=None, width=380, height=600, skip_pixels=4, num_actions=128, no_fail=False,
                       load_weights=None, load_memory=None, Vmin=-10, Vmax=10, resume_start=0, load_stats=None,
-                      save_stats='./stats.pkl', learning_freq=2):
+                      save_stats='./stats.pkl', learning_freq=1, load_optimizer=None, optimizer_path='weights/opti.pt',
+                      evaluation=False):
 
     priority_weight_increase = (1 - beta) / (max_timestep - learn_start - resume_start)
+
     env = environment.ManiaEnv(height=height, width=width, stack_size=stack_size, star=star, beatmap_name=beatmap_name,
                                num_actions=num_actions, skip_pixels=skip_pixels, no_fail=no_fail)
     trainer = RainbowTrainer(env, batch_size=batch_size, lr=lr, gamma=gamma, omega=omega, beta=beta, sigma=sigma, n=n,
                              eps=eps, atoms=atoms, norm_clip=norm_clip, load_weights=load_weights, load_memory=load_memory,
-                             Vmin=Vmin, Vmax=Vmax)
+                             Vmin=Vmin, Vmax=Vmax, load_optimizer=load_optimizer)
     if load_stats is None:
         stat = {'episode_reward': []}
     else:
@@ -200,7 +202,7 @@ def RainbowManiaTrain(lr=0.0000625, batch_size=32, gamma=0.999, omega=0.5, beta=
                 if count % 100 == 0:
                     print('   -  Mean reward over last 100 episodes: %.4f' % np.array(stat['episode_reward'][max(-100, -len(stat['episode_reward'])):]).mean())
             if need_save:
-                trainer.save(model_save_path + str(t) + ".pt", memory_save_path)
+                trainer.save(model_save_path + str(t) + ".pt", memory_save_path, optimizer_path)
                 with open(save_stats, 'wb') as f:
                     pickle.dump(stat, f, protocol=4)
                 need_save = False
@@ -217,7 +219,7 @@ def RainbowManiaTrain(lr=0.0000625, batch_size=32, gamma=0.999, omega=0.5, beta=
         if env.episode_counter > 0:  # Skip first episode because of latency issues
             trainer.memory.append(state[-1], action, reward, done)
 
-        if t >= learn_start and t % learning_freq == 0:
+        if t >= learn_start and t % learning_freq == 0 and not evaluation:
             trainer.memory.priority_weight = min(trainer.memory.priority_weight + priority_weight_increase, 1)
             if thread is not None:
                 thread.join()
@@ -240,7 +242,8 @@ if __name__ == '__main__':
                   save_name=save_name, batch_size=BATCH_SIZE, human_off_policy=False, no_fail=True,
                   initial_p=1.0, end_p=0.05, decay_p=4000000, target_update=30000, init_k=0, min_experience=50)
     '''
-    RainbowManiaTrain(star=3, beatmap_name="todestrieb", num_actions=2**4, model_save_path="weights/Rainbow_todestrieb-09-01-2021_3stars",
-                      learn_start=1000, load_weights=None, load_memory=None, batch_size=20, max_timestep=int(1e7),
-                      memory_save_path='./weights/memory09-01-2021.zip', Vmin=-1, Vmax=10, resume_start=0, target_update_freq=50000,
-                      load_stats=None, save_freq=50000, save_stats='./weights/stats.pkl', learning_freq=1, lr=0.00005)
+    RainbowManiaTrain(star=3, beatmap_name="todestrieb", num_actions=2**4, model_save_path="weights/Rainbow_todestrieb-10-01-2021_3stars_BIS",
+                      learn_start=2000, load_weights='weights/Rainbow_todestrieb-10-01-2021_3stars50053.pt', load_memory=None, batch_size=20, max_timestep=int(1e7),
+                      memory_save_path='./weights/memory10-01-2021.zip', Vmin=-1, Vmax=10, resume_start=0, target_update_freq=50000,
+                      load_stats=None, save_freq=50000, save_stats='./stats/stats-10-01-2021.pkl', learning_freq=1, lr=0.00001,
+                      load_optimizer=None, optimizer_path='./weights/opti.pt', evaluation=True)

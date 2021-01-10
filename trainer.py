@@ -214,7 +214,7 @@ class QTrainer:
 
 class RainbowTrainer:
     def __init__(self, env, batch_size=32, lr=0.0001, gamma=0.999, beta=0.4, omega=0.5, sigma=0.1, eps=1.5e-4, n=3, atoms=51,
-                 Vmin=-10.0, Vmax=10.0, norm_clip=10.0, load_weights=None, load_memory=None):
+                 Vmin=-10.0, Vmax=10.0, norm_clip=10.0, load_weights=None, load_memory=None, load_optimizer=None):
         self.batch_size = batch_size
         self.lr = lr  # Optimiser's learning rate
         self.gamma = gamma  # Discount factor
@@ -247,8 +247,10 @@ class RainbowTrainer:
         self.update_target_net()  # Copy online network's weight into the target
         for param in self.target_network.parameters():  # Disable gradients for computing efficiency
             param.requires_grad = False
-
-        self.optimizer = torch.optim.Adam(self.network.parameters(), lr=self.lr, eps=eps)
+        if load_optimizer is None:
+            self.optimizer = torch.optim.Adam(self.network.parameters(), lr=self.lr, eps=eps)
+        else:
+            self.optimizer = torch.load(load_optimizer)
 
         self.running_loss = 0.0
         self.running_counter = 0
@@ -312,8 +314,9 @@ class RainbowTrainer:
         self.running_counter += 1
         self.memory.update_priorities(idx_batch, loss.detach().cpu().numpy())
 
-    def save(self, path, memory_path):  # Save weights to hard disk
-        torch.save(self.network.state_dict(), path)  # TODO: ADD memory save
+    def save(self, path, memory_path, optimizer_path):  # Save weights to hard disk
+        torch.save(self.network.state_dict(), path)
+        torch.save(self.optimizer.state_dict(), optimizer_path)
         with bz2.open(memory_path, 'wb') as f:
             pickle.dump(self.memory, f, protocol=4)
         print("Saved model: " + path + " , and memory to: " + memory_path)

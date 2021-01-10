@@ -73,7 +73,7 @@ class LivePlot:
 
 if __name__ == '__main__':
     fig = plt.figure()
-    with open('../stats/stats_08-01-2021-first_try.pkl', 'rb') as f:
+    with open('../stats/stats.pkl', 'rb') as f:
         stats = pickle.load(f)
     ax = plt.subplot(111)
     n = len(stats['episode_reward'])

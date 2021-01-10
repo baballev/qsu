@@ -213,7 +213,7 @@ class ManiaEnv(gym.Env):  # Environment use to play the osu! mania mode (only ke
         self.observation_space = spaces.Box(low=0, high=1.0, shape=(height//skip_pixels, width//skip_pixels, stack_size))
 
         self.screen = utils.screen.init_screen(capture_output="pytorch_float_gpu")  # Object fetching game screen
-        self.score_ocr = utils.OCR.init_OCR('./weights/OCR/OCR_score3.pt').to(device)  # OCR model to read score
+        self.score_ocr = utils.OCR.init_OCR('./weights/OCR/OCR_score2.pt').to(device)  # OCR model to read score
         self.acc_ocr = utils.OCR.init_OCR('./weights/OCR/OCR_acc2.pt').to(device)  # OCR model to read accuracy
         self.process, self.window = utils.osu_routines.start_osu()  # Osu! process + window object after launching game
 
@@ -336,8 +336,6 @@ class ManiaEnv(gym.Env):  # Environment use to play the osu! mania mode (only ke
         #    acc = self.previous_acc  # If the OCR failed to read the accuracy at the beginning of the map, keep it at the same value
 
         done = (score == -1)  # When the beatmap is done, the screen becomes black, OCR detects it and returns -1
-        if score - self.previous_score > 75000: # Security for OCR reading errors
-            score = self.previous_score
         rew = self.get_reward(score)
         if not self.no_fail:
             if self.history[-1, 1, 1] > 0.0834 and self.steps > 30:  # If left hand corner pixel becomes too red -> agent failed the map
