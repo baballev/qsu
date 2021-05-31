@@ -15,3 +15,5 @@ statistics.pkl
 pyclick_modified/
 *.pkl
 stats/
+figures/
+SuperHexagonAI/

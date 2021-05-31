@@ -225,20 +225,27 @@ class NoisyLinear(nn.Module):
 
 
 class DuelDQN(nn.Module):
-    def __init__(self, atoms, num_actions, channels=4, width=256, height=150, std_init=0.1):
+    def __init__(self, atoms, num_actions, channels=4, width=256, height=150, std_init=0.1, data_efficient=False):
         super(DuelDQN, self).__init__()
         self.num_actions = num_actions
         self.atoms = atoms
-
-        self.conv1 = nn.Conv2d(channels, 32, kernel_size=8, stride=4)
-        self.conv2 = nn.Conv2d(32, 64, kernel_size=4, stride=2)
-        self.conv3 = nn.Conv2d(64, 64, kernel_size=3, stride=1)
+        self.data_efficient = data_efficient
 
         def conv2d_size_out(size, kernel_size=5, stride=2):
             return (size - (kernel_size - 1) - 1) // stride + 1
 
-        convw = conv2d_size_out(conv2d_size_out(conv2d_size_out(width, kernel_size=8, stride=4), kernel_size=4, stride=2), kernel_size=3, stride=1)
-        convh = conv2d_size_out(conv2d_size_out(conv2d_size_out(height, kernel_size=8, stride=4), kernel_size=4, stride=2), kernel_size=3, stride=1)
+        if not data_efficient:
+            self.conv1 = nn.Conv2d(channels, 32, kernel_size=8, stride=4)
+            self.conv2 = nn.Conv2d(32, 64, kernel_size=4, stride=2)
+            self.conv3 = nn.Conv2d(64, 64, kernel_size=3, stride=1)
+            convw = conv2d_size_out(conv2d_size_out(conv2d_size_out(width, kernel_size=8, stride=4), kernel_size=4, stride=2), kernel_size=3, stride=1)
+            convh = conv2d_size_out(conv2d_size_out(conv2d_size_out(height, kernel_size=8, stride=4), kernel_size=4, stride=2), kernel_size=3, stride=1)
+
+        else:
+            self.conv1 = nn.Conv2d(channels, 32, kernel_size=5, stride=5)
+            self.conv2 = nn.Conv2d(32, 64, kernel_size=5, stride=5)
+            convw = conv2d_size_out(conv2d_size_out(width, kernel_size=5, stride=5), kernel_size=5, stride=5)
+            convh = conv2d_size_out(conv2d_size_out(height, kernel_size=5, stride=5), kernel_size=5, stride=5)
 
         self.nfc4_v = NoisyLinear(convh * convw * 64, 512, std_init=std_init).to(device)
         self.nfc5_v = NoisyLinear(512, self.atoms, std_init=std_init).to(device)
@@ -246,10 +253,15 @@ class DuelDQN(nn.Module):
         self.nfc5_a = NoisyLinear(512, self.num_actions * self.atoms, std_init=std_init).to(device)
 
     def forward(self, x, log=False):
-        x = F.relu(self.conv1(x))
-        x = F.relu(self.conv2(x))
-        x = F.relu(self.conv3(x))
-        x = x.view(x.size(0), -1)
+        if not self.data_efficient:
+            x = F.relu(self.conv1(x))
+            x = F.relu(self.conv2(x))
+            x = F.relu(self.conv3(x))
+            x = x.view(x.size(0), -1)
+        else:
+            x = F.relu(self.conv1(x))
+            x = F.relu(self.conv2(x))
+            x = x.view(x.size(0), -1)
         v = self.nfc5_v(F.relu(self.nfc4_v(x)))
         a = self.nfc5_a(F.relu(self.nfc4_a(x)))
         v = v.view(-1, 1, self.atoms)
@@ -265,3 +277,5 @@ class DuelDQN(nn.Module):
         for name, module in self.named_children():
             if 'nfc' in name:
                 module.reset_noise()
+
+

@@ -214,7 +214,8 @@ class QTrainer:
 
 class RainbowTrainer:
     def __init__(self, env, batch_size=32, lr=0.0001, gamma=0.999, beta=0.4, omega=0.5, sigma=0.1, eps=1.5e-4, n=3, atoms=51,
-                 Vmin=-10.0, Vmax=10.0, norm_clip=10.0, load_weights=None, load_memory=None, load_optimizer=None):
+                 Vmin=-10.0, Vmax=10.0, norm_clip=10.0, load_weights=None, load_memory=None, load_optimizer=None,
+                 data_efficient=False):
         self.batch_size = batch_size
         self.lr = lr  # Optimiser's learning rate
         self.gamma = gamma  # Discount factor
@@ -230,7 +231,7 @@ class RainbowTrainer:
         self.env = env
 
         # The neural network outputting the reward distributions
-        self.network = models.DuelDQN(width=env.width//env.skip_pixels, height=env.height//env.skip_pixels, num_actions=env.action_space.n, atoms=self.atoms, channels=env.stack_size, std_init=sigma).to(device)
+        self.network = models.DuelDQN(width=env.width//env.skip_pixels, height=env.height//env.skip_pixels, num_actions=env.action_space.n, atoms=self.atoms, channels=env.stack_size, std_init=sigma, data_efficient=data_efficient).to(device)
         print(self.network)
 
         if load_weights is not None:  # Load weights if a path to it is provided
@@ -243,7 +244,7 @@ class RainbowTrainer:
             self.memory = PrioritizedMemory(250000, priority_weight=beta, priority_exponent=omega, multi_step=n,
                                             discount=self.gamma, history_length=env.stack_size)
 
-        self.target_network = models.DuelDQN(width=env.width//env.skip_pixels, height=env.height//env.skip_pixels, num_actions=env.action_space.n, atoms=self.atoms, channels=env.stack_size, std_init=sigma).to(device)
+        self.target_network = models.DuelDQN(width=env.width//env.skip_pixels, height=env.height//env.skip_pixels, num_actions=env.action_space.n, atoms=self.atoms, channels=env.stack_size, std_init=sigma, data_efficient=data_efficient).to(device)
         self.update_target_net()  # Copy online network's weight into the target
         for param in self.target_network.parameters():  # Disable gradients for computing efficiency
             param.requires_grad = False

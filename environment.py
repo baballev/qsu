@@ -348,3 +348,5 @@ class ManiaEnv(gym.Env):  # Environment use to play the osu! mania mode (only ke
 
     def threaded_screen_fetch(self):
         self.history[-1] = utils.screen.get_game_screen(self.screen, skip_pixels=self.skip_pixels)[:, :, self.region[0]:self.region[1]].sum(0, keepdim=True) / 3.0
+
+
