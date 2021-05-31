@@ -5,9 +5,9 @@ For now, different approaches are in the code but only the most efficient one wi
 
 
 ## What is osu! ?  
-[Osu!](https://osu.ppy.sh) is a free rhythm game on computer by [Peppy](https://github.com/peppy).
+[Osu!](https://osu.ppy.sh) is a free rhythm game on computer by [Peppy](https://github.com/peppy).  
 
-
+![osu! mania gameplay](https://thumbs.gfycat.com/DifferentPoshDesertpupfish-size_restricted.gif "osu! mania gameplay")
 
 ## Dependencies
 ToDo + setup.py
