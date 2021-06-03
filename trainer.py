@@ -323,6 +323,47 @@ class RainbowTrainer:
         print("Saved model: " + path + " , and memory to: " + memory_path)
 
 
+class TaikoTrainer:
+    def __init__(self, env, batch_size=32, lr=0.0001, gamma=0.999, eps=1.5e-4, n=3,
+                 norm_clip=10.0, load_weights=None, load_memory=None, load_optimizer=None, min_experience=50000):
+        self.batch_size = batch_size
+        self.lr = lr  # Optimiser's learning rate
+        self.gamma = gamma  # Discount factor
+        self.n = n  # Multi-step lookahead number
+        self.norm_clip = norm_clip  # Value to which gradients are clipped in norm
+
+        self.env = env
+
+        self.q_nework = models.TaikoNetwork()
+        self.target_q_network = models.TaikoNetwork()
+
+        if load_memory is None:
+            self.memory = ReplayMemory(1000000)  # TODO: Optimize memory
+        else:
+            self.memory = pickle.load(open(load_memory, 'rb'))
+
+        self.min_experience = min_experience
+        total_params = sum(p.numel() for p in self.q_network.parameters())
+        print('Number of parameters: %d' % total_params)
+
+    def optimize(self):
+        pass
+
+    def load_models(self):
+        pass
+
+    def save_model(self):
+        pass
+
+    def select_action(self):
+        pass
+
+    def select_explo_action(self):
+        pass
+
+
+
+
 if __name__ == '__main__':
     trainer = Trainer()
     while True:

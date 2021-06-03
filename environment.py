@@ -323,7 +323,7 @@ class ManiaEnv(gym.Env):  # Environment use to play the osu! mania mode (only ke
         self.steps += 1      # TODO: screenshots consecutively doesnt work, there need to be a small sleep
         self.perform_actions(action)
         self.last_action = action
-        for i in range(len(self.history)-1):
+        for i in range(len(self.history)-1): # Ugly
             self.history[i] = self.history[i+1]  # Update history
         time.sleep(0.015)  # Frequency play regulator, wait a bit after action has been performed before observing
         self.history[-1] = utils.screen.get_game_screen(self.screen, skip_pixels=self.skip_pixels)[:, :, self.region[0]:self.region[1]].sum(0, keepdim=True) / 3.0
@@ -350,3 +350,86 @@ class ManiaEnv(gym.Env):  # Environment use to play the osu! mania mode (only ke
         self.history[-1] = utils.screen.get_game_screen(self.screen, skip_pixels=self.skip_pixels)[:, :, self.region[0]:self.region[1]].sum(0, keepdim=True) / 3.0
 
 
+class TaikoEnvironment(gym.Env):
+    def __init__(self, width=1024, height=600, stack_size=4, star=1, beatmap_name=None, acc_threshold=1.0):
+        self.stack_size = stack_size  # Length of history, number of last frames to pass as state
+        self.width = width
+        self.height = height
+        self.skip_pixels = 8
+
+        self.action_space = spaces.Discrete(16)
+        self.observation_space = spaces.Box(low=0, high=1.0,
+                                            shape=(height // self.skip_pixels, width // self.skip_pixels, stack_size))
+
+        self.screen = utils.screen.init_screen(capture_output="pytorch_float_gpu")  # Object fetching game screen
+        self.score_ocr = utils.OCR.init_OCR('./weights/OCR/OCR_score2.pt').to(device)  # OCR model to read score
+        self.acc_ocr = utils.OCR.init_OCR('./weights/OCR/OCR_acc2.pt').to(device)  # OCR model to read accuracy
+        self.process, self.window = utils.osu_routines.start_osu()  # Osu! process + window object after launching game
+
+        self.key_dict = {'w': 0x57, 'x': 0x58, 'c': 0x43, 'v': 0x56}  # Keyboard encoding
+
+        self.star = star  # Difficulty level of the songs played by the agent, integer from 1 to 10
+        self.beatmap_name = beatmap_name  # If the agent plays a specific map, he will search it using this name
+        self.acc_threshold = acc_threshold  # Used for reward, under this threshold (percent) agent gets negative reward
+
+        self.previous_score = None
+        self.previous_acc = None
+        self.history = None  # Tracking the last 4 frames and send it as state to the neural network
+
+        self.steps = 0  # Number of steps into episode tracker
+        self.episode_counter = 0
+        self.last_action = None
+
+        utils.osu_routines.move_to_songs(star=star)
+        if beatmap_name is not None:
+            utils.osu_routines.select_beatmap(beatmap_name)
+        else:
+            time.sleep(10)  # Manual selection
+
+    def launch_episode(self):
+        utils.screen.start_capture(self.screen) # Init high frequency screen capture
+        utils.osu_routines.launch_selected_beatmap() # Click on osu's button to start the beatmap
+        time.sleep(0.3)  # Short wait delay
+
+    def reset(self):
+        self.screen.stop()  # Stop high frequency screen capture
+        utils.osu_routines.return_to_beatmap()  # Return to beatmap selection menu
+        self.episode_counter += 1
+        self.steps = 0
+        for key in self.key_dict.keys():  # Reset key press
+            win32api.keybd_event(self.key_dict[key], 0, win32con.KEYEVENTF_KEYUP, 0)
+        return
+
+    def get_reward(self, score):
+        return torch.tensor([max(score - self.previous_score, 0)/1000.0], device=device)
+
+    def get_obs(self):
+
+        return   self.screen.get_latest_frame().permute(2, 0, 1)[2]
+
+    def step(self, action):
+        self.steps += 1
+        self.perform_actions(action)
+        self.last_action = action
+        #Wait ?
+        self.history[:-1] = self.history[1:]  # Roll stack
+        self.history[-1] = self.get_obs()
+        score = utils.OCR.get_score(self.screen, self.score_ocr, self.window)  #TODO retrain for taiko ocr?
+        done = (score == -1)
+        rew = self.get_reward(score)
+        self.previous_score = score
+        return self.history.unsqueeze(0), rew, done
+
+    def perform_actions(self, control):  # Control in [0, 15]
+        n = 4  # Number of buttons
+        key_encoding = []
+        q, r = divmod(control, 2 ** (n - 1))
+        key_encoding.append(q)
+        for i in range(1, n - 1):
+            q, r = divmod(r, 2 ** (n - (i + 1)))
+            key_encoding.append(q)
+        for key in self.key_dict.keys():
+            if key_encoding[i]:
+                win32api.keybd_event(self.key_dict[key], 0, 0, 0)  # Press keyboard button
+            else:
+                win32api.keybd_event(self.key_dict[key], 0, win32con.KEYEVENTF_KEYUP, 0)  # Release keyboard button

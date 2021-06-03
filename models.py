@@ -279,3 +279,19 @@ class DuelDQN(nn.Module):
                 module.reset_noise()
 
 
+class TaikoNetwork(nn.Module):
+    def __init__(self, input_dim=600, action_dim=16):
+        super(TaikoNetwork, self).__init__()
+        self.input_dim = input_dim
+        self.action_dim = action_dim
+
+        self.fc1 = nn.Linear(self.input_dim, 256)
+        self.fc2 = nn.Linear(256, 64)
+        self.fc3 = nn.Linear(64, self.action_dim)
+
+    def forward(self, x):
+        x = x.view(x.size(0), -1)
+        x = F.leaky_relu(self.fc1(x))
+        x = F.leaky_relu(self.fc2(x))
+        x = F.leaky_relu(self.fc3(x))
+        return x
