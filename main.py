@@ -233,15 +233,11 @@ def RainbowManiaTrain(lr=0.0000625, batch_size=32, gamma=0.999, omega=0.5, beta=
             need_save = True
 
 
-def TaikoTrain(lr=0.000025, batch_size=32, gamma=0.999, stack_size=4, skip_pixels=8, max_timestep=int(5e7), learn_start=80000, save_freq=50000,
-                      model_save_path='weights/Rainbow_test', memory_save_path='weights/memory.zip', target_update_freq=80000,
-                      star=4, beatmap_name=None, width=380, height=600, load_weights=None, load_memory=None, min_experience=25000):
+def TaikoTrain(lr=0.000025, batch_size=32, stack_size=4, skip_pixels=8, max_timestep=int(5e7), learn_start=80000, save_freq=50000,
+                      target_update_freq=80000, star=None, beatmap_name=None, min_experience=25000, root_dir='./weights'):
 
-    env = environment.ManiaEnv(height=height, width=width, stack_size=stack_size, star=star, beatmap_name=beatmap_name,
-                            skip_pixels=skip_pixels)
-
-    tt = TaikoTrainer(env, batch_size=batch_size, lr=lr, gamma=GAMMA, load_weights=load_weights, load_memory=load_memory,
-                         min_experience=min_experience, gradient_clipping_norm=10.0)
+    env = environment.TaikoEnv(stack_size=stack_size, star=star, beatmap_name=beatmap_name)
+    tt = TaikoTrainer(env, batch_size=batch_size, lr=lr, gamma=GAMMA, root_dir=root_dir, min_experience=min_experience, norm_clip=10.0)
 
 
 
@@ -255,8 +251,12 @@ if __name__ == '__main__':
                   save_name=save_name, batch_size=BATCH_SIZE, human_off_policy=False, no_fail=True,
                   initial_p=1.0, end_p=0.05, decay_p=4000000, target_update=30000, init_k=0, min_experience=50)
     '''
+    '''
     RainbowManiaTrain(star=3, beatmap_name="bongo", num_actions=2**4, model_save_path="weights/Taiko_Bongo-31-05-2021_3stars",
                       learn_start=1600, load_weights=None, load_memory=None, batch_size=32, max_timestep=int(1e6),
                       memory_save_path='./weights/memory28-03-2021.zip', Vmin=-1, Vmax=10, resume_start=0, target_update_freq=5000,
                       load_stats=None, save_freq=5000, save_stats='./stats/stats-28-03-2021.pkl', learning_freq=1, lr=0.0001,
                       load_optimizer=None, optimizer_path='./weights/opti.pt', evaluation=False, n=20, data_efficient=True)
+    '''
+
+    TaikoTrain(root_dir='./weights/Taiko/')

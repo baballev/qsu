@@ -50,7 +50,7 @@ def save_screen(capturer, output_dir, output_name, region=WINDOW_REGION, skip_pi
 
 
 ## Testing new way to record
-def start_capture(screen, fps=24):
+def start_capture(screen, fps=60):
     screen.capture(fps, region=TAIKO_REGION)
 
 
@@ -68,11 +68,11 @@ if __name__ == '__main__':
             pass
         prev_time = time.perf_counter()
 
-        transforms.ToPILImage()(screen.get_latest_frame().permute(2, 0, 1)[2]).save('E:/Programmation/Python/qsu!/benchmark/31-05-2021/' + 'tmp' + str(counting) + '.png')
+        transforms.ToPILImage()(screen.get_latest_frame().permute(2, 0, 1)[2, ::2, ::2]).save('E:/Programmation/Python/qsu!/benchmark/07-JUN-2021/' + 'tmp' + str(counting) + '.png')
         counting += 1
         if counting == 250:
 
-            t = screen.get_latest_frame().permute(2, 0, 1)[2]
+            t = screen.get_latest_frame().permute(2, 0, 1)[2, ::2, ::2]
             print(t)
             with open('E:/Programmation/Python/qsu!/benchmark/31-05-2021/tensor.txt', 'w') as f:
                 f.write(str(t))

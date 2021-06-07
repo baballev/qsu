@@ -350,27 +350,22 @@ class ManiaEnv(gym.Env):  # Environment use to play the osu! mania mode (only ke
         self.history[-1] = utils.screen.get_game_screen(self.screen, skip_pixels=self.skip_pixels)[:, :, self.region[0]:self.region[1]].sum(0, keepdim=True) / 3.0
 
 
-class TaikoEnvironment(gym.Env):
-    def __init__(self, width=1024, height=600, stack_size=4, star=1, beatmap_name=None, acc_threshold=1.0):
+class TaikoEnv(gym.Env):
+    def __init__(self, stack_size=1, star=None, beatmap_name=None):
         self.stack_size = stack_size  # Length of history, number of last frames to pass as state
-        self.width = width
-        self.height = height
-        self.skip_pixels = 8
-
         self.action_space = spaces.Discrete(16)
-        self.observation_space = spaces.Box(low=0, high=1.0,
-                                            shape=(height // self.skip_pixels, width // self.skip_pixels, stack_size))
+        self.observation_space = spaces.Box(low=0, high=1.0, shape=(1, 600, stack_size))
 
         self.screen = utils.screen.init_screen(capture_output="pytorch_float_gpu")  # Object fetching game screen
+
         self.score_ocr = utils.OCR.init_OCR('./weights/OCR/OCR_score2.pt').to(device)  # OCR model to read score
-        self.acc_ocr = utils.OCR.init_OCR('./weights/OCR/OCR_acc2.pt').to(device)  # OCR model to read accuracy
+
         self.process, self.window = utils.osu_routines.start_osu()  # Osu! process + window object after launching game
 
         self.key_dict = {'w': 0x57, 'x': 0x58, 'c': 0x43, 'v': 0x56}  # Keyboard encoding
 
         self.star = star  # Difficulty level of the songs played by the agent, integer from 1 to 10
         self.beatmap_name = beatmap_name  # If the agent plays a specific map, he will search it using this name
-        self.acc_threshold = acc_threshold  # Used for reward, under this threshold (percent) agent gets negative reward
 
         self.previous_score = None
         self.previous_acc = None
@@ -404,15 +399,14 @@ class TaikoEnvironment(gym.Env):
         return torch.tensor([max(score - self.previous_score, 0)/1000.0], device=device)
 
     def get_obs(self):
-
-        return   self.screen.get_latest_frame().permute(2, 0, 1)[2]
+        return self.screen.get_latest_frame().permute(2, 0, 1)[2]
 
     def step(self, action):
         self.steps += 1
         self.perform_actions(action)
         self.last_action = action
         #Wait ?
-        self.history[:-1] = self.history[1:]  # Roll stack
+        self.history[:-1] = self.history[1:]  # Roll stack TODO check if its ok with stack_size = 1
         self.history[-1] = self.get_obs()
         score = utils.OCR.get_score(self.screen, self.score_ocr, self.window)  #TODO retrain for taiko ocr?
         done = (score == -1)

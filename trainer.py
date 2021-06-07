@@ -11,7 +11,8 @@ import utils.screen
 import utils.OCR
 import utils.info_plot
 import utils.schedule
-from memory import ReplayMemory, PrioritizedMemory
+import utils.checkpoint
+from memory import ReplayMemory, PrioritizedMemory, ReplayMemory2
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -324,23 +325,31 @@ class RainbowTrainer:
 
 
 class TaikoTrainer:
-    def __init__(self, env, batch_size=32, lr=0.0001, gamma=0.999, eps=1.5e-4, n=3,
-                 norm_clip=10.0, load_weights=None, load_memory=None, load_optimizer=None, min_experience=50000):
+    def __init__(self, env, batch_size=32, lr=0.0001, gamma=0.999, eps=1.5e-4,
+                 norm_clip=10.0, root_dir='./weights', min_experience=50000):
+        self.checkpointer = utils.checkpoint.Checkpointer(root_dir, env.beatmap_name)
         self.batch_size = batch_size
         self.lr = lr  # Optimiser's learning rate
         self.gamma = gamma  # Discount factor
-        self.n = n  # Multi-step lookahead number
         self.norm_clip = norm_clip  # Value to which gradients are clipped in norm
 
         self.env = env
 
-        self.q_nework = models.TaikoNetwork()
-        self.target_q_network = models.TaikoNetwork()
+        self.q_network = models.TaikoNetwork().to(device)
+        self.target_q_network = models.TaikoNetwork().to(device)
 
+        load_memory, load_optimizer, load_network = self.checkpointer.load()
+        if load_network is not None:
+            self.q_nework.load_state_dict(torch.load(load_network))
+            self.target_q_network.load_state_dict(torch.load(load_network))
         if load_memory is None:
-            self.memory = ReplayMemory(1000000)  # TODO: Optimize memory
+            self.memory = ReplayMemory2(1000000)  # Approx 5 GB memory assuming 600 dim float32 tensors for state, TODO: optimize, there's redundancy
         else:
             self.memory = pickle.load(open(load_memory, 'rb'))
+        if load_optimizer is None:
+            self.optimizer = torch.optim.Adam(self.q_network.parameters(), lr=self.lr, eps=eps)
+        else:
+            self.optimizer = torch.load(load_optimizer)
 
         self.min_experience = min_experience
         total_params = sum(p.numel() for p in self.q_network.parameters())
@@ -349,19 +358,17 @@ class TaikoTrainer:
     def optimize(self):
         pass
 
-    def load_models(self):
-        pass
-
-    def save_model(self):
-        pass
-
     def select_action(self):
         pass
 
     def select_explo_action(self):
         pass
 
+    def update_target(self):
+        pass
 
+    def save(self):
+        self.checkpointer.save(self.memory, self.target_q_network, self.optimizer)
 
 
 if __name__ == '__main__':
