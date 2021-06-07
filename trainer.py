@@ -335,8 +335,8 @@ class TaikoTrainer:
 
         self.env = env
 
-        self.q_network = models.TaikoNetwork().to(device)
-        self.target_q_network = models.TaikoNetwork().to(device)
+        self.q_network = models.TaikoNetwork(input_dim=self.env.observation_space.shape[1]).to(device)
+        self.target_q_network = models.TaikoNetwork(input_dim=self.env.observation_space.shape[1]).to(device)
 
         load_memory, load_optimizer, load_network = self.checkpointer.load()
         if load_network is not None:

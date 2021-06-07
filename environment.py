@@ -351,13 +351,12 @@ class ManiaEnv(gym.Env):  # Environment use to play the osu! mania mode (only ke
 
 
 class TaikoEnv(gym.Env):
-    def __init__(self, stack_size=1, star=None, beatmap_name=None):
+    def __init__(self, stack_size=1, star=None, beatmap_name=None, skip_pixels=1):
         self.stack_size = stack_size  # Length of history, number of last frames to pass as state
         self.action_space = spaces.Discrete(16)
-        self.observation_space = spaces.Box(low=0, high=1.0, shape=(1, 600, stack_size))
-
+        self.observation_space = spaces.Box(low=0, high=1.0, shape=(1, 600//skip_pixels, stack_size))
         self.screen = utils.screen.init_screen(capture_output="pytorch_float_gpu")  # Object fetching game screen
-
+        self.skip_pixels = skip_pixels
         self.score_ocr = utils.OCR.init_OCR('./weights/OCR/OCR_score2.pt').to(device)  # OCR model to read score
 
         self.process, self.window = utils.osu_routines.start_osu()  # Osu! process + window object after launching game

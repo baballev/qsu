@@ -68,13 +68,12 @@ if __name__ == '__main__':
             pass
         prev_time = time.perf_counter()
 
-        transforms.ToPILImage()(screen.get_latest_frame().permute(2, 0, 1)[2, ::2, ::2]).save('E:/Programmation/Python/qsu!/benchmark/07-JUN-2021/' + 'tmp' + str(counting) + '.png')
+        transforms.ToPILImage()(screen.get_latest_frame().permute(2, 0, 1)[2, ::4, ::4]).save('E:/Programmation/Python/qsu!/benchmark/07-JUN-2021/' + 'tmp' + str(counting) + '.png')
         counting += 1
         if counting == 250:
 
-            t = screen.get_latest_frame().permute(2, 0, 1)[2, ::2, ::2]
+            t = screen.get_latest_frame().permute(2, 0, 1)[2, ::4, ::4]
             print(t)
-            with open('E:/Programmation/Python/qsu!/benchmark/31-05-2021/tensor.txt', 'w') as f:
+            with open('E:/Programmation/Python/qsu!/benchmark/07-JUN-2021/tensor.txt', 'w') as f:
                 f.write(str(t))
             break
-        #save_screen(screen, 'E:/Programmation/Python/qsu!/benchmark/31-05-2021/', 'tmp', region=TAIKO_REGION, skip_pixels=6)

@@ -233,13 +233,11 @@ def RainbowManiaTrain(lr=0.0000625, batch_size=32, gamma=0.999, omega=0.5, beta=
             need_save = True
 
 
-def TaikoTrain(lr=0.000025, batch_size=32, stack_size=4, skip_pixels=8, max_timestep=int(5e7), learn_start=80000, save_freq=50000,
+def TaikoTrain(lr=0.000025, batch_size=32, stack_size=4, skip_pixels=4, max_timestep=int(5e7), learn_start=80000, save_freq=50000,
                       target_update_freq=80000, star=None, beatmap_name=None, min_experience=25000, root_dir='./weights'):
 
-    env = environment.TaikoEnv(stack_size=stack_size, star=star, beatmap_name=beatmap_name)
+    env = environment.TaikoEnv(stack_size=stack_size, star=star, beatmap_name=beatmap_name, skip_pixels=skip_pixels)
     tt = TaikoTrainer(env, batch_size=batch_size, lr=lr, gamma=GAMMA, root_dir=root_dir, min_experience=min_experience, norm_clip=10.0)
-
-
 
 
 if __name__ == '__main__':
