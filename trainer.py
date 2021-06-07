@@ -361,7 +361,11 @@ class TaikoTrainer:
     def select_action(self):
         pass
 
+    def random_action(self):
+        pass
+
     def select_explo_action(self):
+        # Act epsilon-greedily : If random -> self.random_action() else: self.select_action()
         pass
 
     def update_target(self):

@@ -61,11 +61,6 @@ def log_episodes(i, q_trainer, steps, delta_t, k):  # TODO : Make a logging util
         print("Schedule: %f" % q_trainer.scheduler.value(k))
 
 
-def busy_wait(freq, previous_t):
-    while time.time() - previous_t < 1/(freq+0.5):
-        time.sleep(0.001)
-
-
 def trainQNetwork(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights=None, save_name='tests',
                   beatmap_name=None, star=1, evaluation=False, human_off_policy=False, load_memory=None, no_fail=False,
                   initial_p=1.0, end_p=0.05, decay_p=2000000, target_update=30000, init_k=0, min_experience=25000):
@@ -126,7 +121,7 @@ def trainQNetwork(episode_nb, learning_rate, batch_size=BATCH_SIZE, load_weights
             controls_state = new_controls_state
             episode_reward += reward
 
-            busy_wait(freq=12.0, previous_t=previous_t)
+            #busy_wait(freq=12.0, previous_t=previous_t)
             if done:
                 break
         end = time.time()
@@ -233,11 +228,21 @@ def RainbowManiaTrain(lr=0.0000625, batch_size=32, gamma=0.999, omega=0.5, beta=
             need_save = True
 
 
-def TaikoTrain(lr=0.000025, batch_size=32, stack_size=4, skip_pixels=4, max_timestep=int(5e7), learn_start=80000, save_freq=50000,
-                      target_update_freq=80000, star=None, beatmap_name=None, min_experience=25000, root_dir='./weights'):
+def TaikoTrain(lr=0.000025, batch_size=32, stack_size=4, skip_pixels=4, learn_start=12000, save_freq=30000, episode_nb=5,
+                      target_update_freq=10000, star=None, beatmap_name=None, min_experience=25000, root_dir='./weights'):
 
     env = environment.TaikoEnv(stack_size=stack_size, star=star, beatmap_name=beatmap_name, skip_pixels=skip_pixels)
     tt = TaikoTrainer(env, batch_size=batch_size, lr=lr, gamma=GAMMA, root_dir=root_dir, min_experience=min_experience, norm_clip=10.0)
+
+    for episode in range(episode_nb):
+        state = env.reset()
+        env.launch_episode()
+        tt.save()
+        '''
+        for steps in range(MAX_STEPS):
+            pass
+        '''
+
 
 
 if __name__ == '__main__':

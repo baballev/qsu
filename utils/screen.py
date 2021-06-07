@@ -9,7 +9,7 @@ import torchvision.transforms as transforms
 WINDOW_REGION = (0, 26, 1024, 626)
 GAME_REGION = (2, 26, 880, 626)
 MANIA_REGION = (140, 26, 520, 626)
-TAIKO_REGION = (50, 272, 650, 273)
+TAIKO_REGION = (100, 272, 700, 273)
 
 
 def init_screen(capture_output="pytorch_float_gpu"):

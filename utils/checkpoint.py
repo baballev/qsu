@@ -62,7 +62,7 @@ class Checkpointer:
         with bz2.open(tmp + self.memory_name, 'wb') as f:
             pickle.dump(memory, f, protocol=4)
         torch.save(model.state_dict(), tmp + self.weights_name)
-        torch.save(optimizer.state_dict(), tmp + self.opti_path)
+        torch.save(optimizer.state_dict(), tmp + self.opti_name)
         self.count += 1
         print("Saved model + memory + optimizer to: " + tmp)
         return

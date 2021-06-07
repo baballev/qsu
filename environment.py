@@ -367,7 +367,6 @@ class TaikoEnv(gym.Env):
         self.beatmap_name = beatmap_name  # If the agent plays a specific map, he will search it using this name
 
         self.previous_score = None
-        self.previous_acc = None
         self.history = None  # Tracking the last 4 frames and send it as state to the neural network
 
         self.steps = 0  # Number of steps into episode tracker
@@ -378,12 +377,14 @@ class TaikoEnv(gym.Env):
         if beatmap_name is not None:
             utils.osu_routines.select_beatmap(beatmap_name)
         else:
+            print("Please select the beatmap (Waiting for 10 seconds)")
             time.sleep(10)  # Manual selection
 
     def launch_episode(self):
         utils.screen.start_capture(self.screen) # Init high frequency screen capture
         utils.osu_routines.launch_selected_beatmap() # Click on osu's button to start the beatmap
         time.sleep(0.3)  # Short wait delay
+        self.previous_score = 0
 
     def reset(self):
         self.screen.stop()  # Stop high frequency screen capture
@@ -398,14 +399,15 @@ class TaikoEnv(gym.Env):
         return torch.tensor([max(score - self.previous_score, 0)/1000.0], device=device)
 
     def get_obs(self):
-        return self.screen.get_latest_frame().permute(2, 0, 1)[2]
+        return self.screen.get_latest_frame().permute(2, 0, 1)[2, ::self.skip_pixels, ::self.skip_pixels]
 
     def step(self, action):
         self.steps += 1
         self.perform_actions(action)
         self.last_action = action
         #Wait ?
-        self.history[:-1] = self.history[1:]  # Roll stack TODO check if its ok with stack_size = 1
+        if self.stack_size > 1:
+            self.history[:-1] = self.history[1:]  # Roll stack TODO check if its ok with stack_size = 1
         self.history[-1] = self.get_obs()
         score = utils.OCR.get_score(self.screen, self.score_ocr, self.window)  #TODO retrain for taiko ocr?
         done = (score == -1)
