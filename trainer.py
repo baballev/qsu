@@ -1,3 +1,5 @@
+import random
+import math
 import pyclick
 import torch
 import torch.nn.functional as F
@@ -18,7 +20,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 DECAY = 0.9995
 
-## IMPORTANT NOTE: THE LARGE MAJORITY of the code was taken or inspired from:
+## IMPORTANT NOTE: THE LARGE MAJORITY of the code regarding DDPG was taken or inspired from:
 ## https://github.com/vy007vikas/PyTorch-ActorCriticRL/
 ## All credits go to vy007vikas for the nice Pytorch continuous action actor-critic DDPG she/he/they made.
 
@@ -326,7 +328,7 @@ class RainbowTrainer:
 
 class TaikoTrainer:
     def __init__(self, env, batch_size=32, lr=0.0001, gamma=0.999, eps=1.5e-4,
-                 norm_clip=10.0, root_dir='./weights', min_experience=50000):
+                 norm_clip=10.0, root_dir='./weights', min_experience=50000, ):
         self.checkpointer = utils.checkpoint.Checkpointer(root_dir, env.beatmap_name)
         self.batch_size = batch_size
         self.lr = lr  # Optimiser's learning rate
@@ -354,9 +356,13 @@ class TaikoTrainer:
         self.min_experience = min_experience
 
         self.running_loss = 0.0
-        self.counter = 0
+        self.steps_done = 0
         self.plotter = utils.info_plot.LivePlot(min_y=0, max_y=10.0, num_points=500, y_axis='Average loss')
         self.avg_reward_plotter = utils.info_plot.LivePlot(min_y=-10, max_y=250, window_x=1270, num_points=500, y_axis='Episode reward', x_axis='Number of episodes')
+
+        self.decay = 10000
+        self.start = 0.9
+        self.end = 0.05
 
         total_params = sum(p.numel() for p in self.q_network.parameters())
         print('Number of parameters: %d' % total_params)
@@ -378,30 +384,36 @@ class TaikoTrainer:
 
     def loss_log(self, loss, log_mod=200):
         self.running_loss += loss.detach()
-        if self.counter % log_mod == 0:
+        if self.steps_done % log_mod == 0:
             self.plotter.step(self.running_loss/log_mod)
             self.running_loss = 0.0
-        self.counter += 1
+        self.steps_done += 1
         return
 
     def disp_log(self):
         self.plotter.show()
         return
 
-    def select_action(self):
-        pass
+    def select_action(self, state):
+        with torch.no_grad():
+            return self.q_network(state).max(1)[1]
 
     def random_action(self):
-        pass
+        return torch.tensor([[random.randrange(4)]], device=device, dtype=torch.int)
 
-    def select_explo_action(self):
+    def select_explo_action(self, state):
         # Act epsilon-greedily : If random -> self.random_action() else: self.select_action()
-        pass
+        r = random.random()
+        threshold = self.end + (self.start - self.end) * math.exp(-1.0 * self.steps_done / self.decay)
+        if r > threshold:
+            return self.random_action()
+        else:
+            return self.select_action(state)
 
     def update_target(self):
         pass
 
-    def save(self):
+    def save(self): # ToDO: add epsilon scheduler, plotter with counter,
         self.checkpointer.save(self.memory, self.target_q_network, self.optimizer)
 
     def stop(self):
