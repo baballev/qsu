@@ -280,7 +280,7 @@ class DuelDQN(nn.Module):
 
 
 class TaikoNetwork(nn.Module):
-    def __init__(self, input_dim=150, action_dim=4):
+    def __init__(self, input_dim=150, action_dim=3):
         super(TaikoNetwork, self).__init__()
         self.input_dim = input_dim
         self.action_dim = action_dim

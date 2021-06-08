@@ -9,7 +9,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # Based on pytorch DQN tutorial
 
 Transition = namedtuple('Transition', ('state', 'action', 'reward', 'next_state', 'control_state', 'next_control_state'))
-Transition2 = namedtuple('Transition', ('state', 'action', 'reward', 'next_state'))
+Transition2 = namedtuple('Transition2', ('state', 'action', 'reward', 'next_state'))
 
 class ReplayMemory(object):
     def __init__(self, capacity):
@@ -62,11 +62,6 @@ class ReplayMemory2(object): # TODO: inheritance correctly ....
         s1 = torch.stack([a[3] for a in batch])
 
         return s, a, r, s1
-
-    def save(self, path):
-        f = open(path, 'wb')
-        pickle.dump(self, f)
-        f.close()
 
     def __len__(self):
         return len(self.memory)

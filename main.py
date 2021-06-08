@@ -249,15 +249,16 @@ def TaikoTrain(lr=0.000025, batch_size=32, stack_size=1, skip_pixels=4, learn_st
 
             new_state, reward, done = env.step(action)
             episode_reward += reward
+            print(episode_reward)
 
             if not done:
                 tt.memory.push(state, action, reward, new_state)
-
+            else:
+                break
             if tt.steps_done >= learn_start:
                 tt.optimize()
 
             state = new_state
-
 
             # These boolean allow the program to wait for the end of the episode before performing the updates or the save to avoid latency while the agent is playing
             if tt.steps_done % target_update_freq == 0:

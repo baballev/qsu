@@ -355,12 +355,13 @@ class TaikoEnv(gym.Env):
     def __init__(self, stack_size=1, star=None, beatmap_name=None, skip_pixels=1):
         super(TaikoEnv, self).__init__()
         self.stack_size = stack_size  # Length of history, number of last frames to pass as state
-        self.action_space = spaces.Discrete(4)
+        self.action_space = spaces.Discrete(3)
         self.observation_space = spaces.Box(low=0, high=1.0, shape=(1, WIDTH//skip_pixels, stack_size))
         self.screen = utils.screen.init_screen(capture_output="pytorch_float_gpu")  # Object fetching game screen
         self.skip_pixels = skip_pixels
         self.score_ocr = utils.OCR.init_OCR('./weights/OCR/OCR_score2.pt').to(device)  # OCR model to read score
 
+        self.hc = pyclick.HumanClicker()
         self.process, self.window = utils.osu_routines.start_osu()  # Osu! process + window object after launching game
 
         #self.key_dict = {'w': 0x57, 'x': 0x58, 'c': 0x43, 'v': 0x56}  # Keyboard encoding
@@ -377,6 +378,7 @@ class TaikoEnv(gym.Env):
         self.last_action = None
 
         utils.osu_routines.move_to_songs(star=star)
+        utils.osu_routines.enable_nofail()
         if beatmap_name is not None:
             utils.osu_routines.select_beatmap(beatmap_name)
         else:
@@ -416,13 +418,23 @@ class TaikoEnv(gym.Env):
         if self.stack_size > 1:
             self.history[:-1] = self.history[1:]
         self.history[-1] = self.get_obs()
-        score = utils.OCR.get_score(self.screen, self.score_ocr, self.window)  #TODO retrain for taiko ocr?
+        score = utils.OCR.get_score(self.screen, self.score_ocr, self.window)  # TODO retrain for taiko ocr?
         done = (score == -1)
-        rew = self.get_reward(score)
+        if score - self.previous_score > 2000.0:
+            done = True
+            rew = torch.tensor([0.0], device=device)
+        else:
+            rew = self.get_reward(score)
         self.previous_score = score
         return self.history.unsqueeze(0), rew, done
 
     def perform_actions(self, control, n=2):  # Control in [0, 2**n - 1]
+        if control.item() == 1:
+            pyautogui.click(button='left')
+        elif control.item() == 2:
+            pyautogui.click(button='right')
+
+        '''
         key_encoding = []
         q, r = divmod(control.item(), 2 ** (n - 1))
         key_encoding.append(q)
@@ -433,4 +445,12 @@ class TaikoEnv(gym.Env):
         for key in self.key_dict.keys():
             if key_encoding[i]:
                 win32api.keybd_event(self.key_dict[key], 0, 0, 0)  # Press keyboard button
+
+        s = time.perf_counter()
+        while time.perf_counter() - s < 0.001:  # Very short busy wait
+            pass
+
+        for key in self.key_dict.keys():
+            if key_encoding[i]:
                 win32api.keybd_event(self.key_dict[key], 0, win32con.KEYEVENTF_KEYUP, 0)  # Release keyboard button
+        '''

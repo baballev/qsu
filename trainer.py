@@ -398,7 +398,8 @@ class TaikoTrainer:
             return self.q_network(state).max(1)[1]
 
     def random_action(self):
-        return torch.tensor([[random.randrange(4)]], device=device, dtype=torch.int)
+        return torch.tensor([[random.randrange(3)]], device=device, dtype=torch.int)
+
 
     def select_explo_action(self, state):
         # Act epsilon-greedily : If random -> self.random_action() else: self.select_action()

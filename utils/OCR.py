@@ -126,7 +126,7 @@ def init_OCR(weights='./weights/OCR/OCR_digit2.pt'):
 counter = 0
 
 
-def get_score(screen, ocr, wndw):
+def get_score(screen, ocr, wndw): #TODO: maybe take all screen in full speed capture and crop for states
     global counter
     with torch.no_grad():
 
