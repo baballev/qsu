@@ -12,6 +12,7 @@ import utils.screen
 import utils.osu_routines
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # Use GPU if available
+WIDTH = utils.screen.TAIKO_REGION[2] - utils.screen.TAIKO_REGION[0]
 
 
 def threaded_mouse_move(x, y, t, human_clicker, curve):  # Threaded function handling mouse movement
@@ -353,15 +354,16 @@ class ManiaEnv(gym.Env):  # Environment use to play the osu! mania mode (only ke
 class TaikoEnv(gym.Env):
     def __init__(self, stack_size=1, star=None, beatmap_name=None, skip_pixels=1):
         self.stack_size = stack_size  # Length of history, number of last frames to pass as state
-        self.action_space = spaces.Discrete(16)
-        self.observation_space = spaces.Box(low=0, high=1.0, shape=(1, 600//skip_pixels, stack_size))
+        self.action_space = spaces.Discrete(4)
+        self.observation_space = spaces.Box(low=0, high=1.0, shape=(1, WIDTH//skip_pixels, stack_size))
         self.screen = utils.screen.init_screen(capture_output="pytorch_float_gpu")  # Object fetching game screen
         self.skip_pixels = skip_pixels
         self.score_ocr = utils.OCR.init_OCR('./weights/OCR/OCR_score2.pt').to(device)  # OCR model to read score
 
         self.process, self.window = utils.osu_routines.start_osu()  # Osu! process + window object after launching game
 
-        self.key_dict = {'w': 0x57, 'x': 0x58, 'c': 0x43, 'v': 0x56}  # Keyboard encoding
+        #self.key_dict = {'w': 0x57, 'x': 0x58, 'c': 0x43, 'v': 0x56}  # Keyboard encoding
+        self.key_dict = {'c': 0x43, 'v': 0x56}  # Keyboard encoding
 
         self.star = star  # Difficulty level of the songs played by the agent, integer from 1 to 10
         self.beatmap_name = beatmap_name  # If the agent plays a specific map, he will search it using this name
@@ -391,8 +393,6 @@ class TaikoEnv(gym.Env):
         utils.osu_routines.return_to_beatmap()  # Return to beatmap selection menu
         self.episode_counter += 1
         self.steps = 0
-        for key in self.key_dict.keys():  # Reset key press
-            win32api.keybd_event(self.key_dict[key], 0, win32con.KEYEVENTF_KEYUP, 0)
         return
 
     def get_reward(self, score):
@@ -415,16 +415,15 @@ class TaikoEnv(gym.Env):
         self.previous_score = score
         return self.history.unsqueeze(0), rew, done
 
-    def perform_actions(self, control):  # Control in [0, 15]
-        n = 4  # Number of buttons
+    def perform_actions(self, control, n=2):  # Control in [0, 2**n - 1]
         key_encoding = []
         q, r = divmod(control, 2 ** (n - 1))
         key_encoding.append(q)
-        for i in range(1, n - 1):
+        i = 0
+        for _ in range(n - 1):
             q, r = divmod(r, 2 ** (n - (i + 1)))
             key_encoding.append(q)
         for key in self.key_dict.keys():
             if key_encoding[i]:
                 win32api.keybd_event(self.key_dict[key], 0, 0, 0)  # Press keyboard button
-            else:
                 win32api.keybd_event(self.key_dict[key], 0, win32con.KEYEVENTF_KEYUP, 0)  # Release keyboard button

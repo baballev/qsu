@@ -331,7 +331,7 @@ class TaikoTrainer:
         self.batch_size = batch_size
         self.lr = lr  # Optimiser's learning rate
         self.gamma = gamma  # Discount factor
-        self.norm_clip = norm_clip  # Value to which gradients are clipped in norm
+        #self.norm_clip = norm_clip  # Value to which gradients are clipped in norm
 
         self.env = env
 

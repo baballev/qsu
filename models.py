@@ -280,13 +280,13 @@ class DuelDQN(nn.Module):
 
 
 class TaikoNetwork(nn.Module):
-    def __init__(self, input_dim=300, action_dim=16):
+    def __init__(self, input_dim=150, action_dim=4):
         super(TaikoNetwork, self).__init__()
         self.input_dim = input_dim
         self.action_dim = action_dim
 
-        self.fc1 = nn.Linear(self.input_dim, 128)
-        self.fc2 = nn.Linear(128, self.action_dim)
+        self.fc1 = nn.Linear(self.input_dim, 64)
+        self.fc2 = nn.Linear(64, self.action_dim)
         #self.fc3 = nn.Linear(64, self.action_dim)
 
     def forward(self, x):
