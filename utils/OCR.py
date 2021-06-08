@@ -129,16 +129,14 @@ counter = 0
 def get_score(screen, ocr, wndw): #TODO: maybe take all screen in full speed capture and crop for states
     global counter
     with torch.no_grad():
-
         score_img = utils.screen.get_screen_region(screen, region=SCORE_REGION)
-        copy_score = score_img
         if counter % 5 == 0:
             if not(score_img.sum()):# or win32gui.GetWindowText(wndw) == 'osu!':
                 return -1
 
         score_img = torch.stack([score_img[:, :, j*18:(j+1)*18] for j in range(8)], 0)
-        if score_img.shape[2] > 27:
-            return -1
+        #if score_img.shape[2] > 27:
+        #    return -1
         score_img = ocr(score_img)
         _, indices = torch.max(score_img, 1)
         s = 0.0
@@ -146,7 +144,6 @@ def get_score(screen, ocr, wndw): #TODO: maybe take all screen in full speed cap
             s += indic * 10**(7-n)
 
         counter += 1
-        torchvision.transforms.ToPILImage()(copy_score).save('../dataset/' + str(s.item()) + '.png')
     return s.float()
 
 

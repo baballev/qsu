@@ -228,8 +228,8 @@ def RainbowManiaTrain(lr=0.0000625, batch_size=32, gamma=0.999, omega=0.5, beta=
             need_save = True
 
 
-def TaikoTrain(lr=0.000025, batch_size=32, stack_size=1, skip_pixels=4, learn_start=12000, save_freq=30000, episode_nb=5,
-                target_update_freq=10000, star=None, beatmap_name=None, min_experience=25000, root_dir='./weights',
+def TaikoTrain(lr=0.00005, batch_size=32, stack_size=1, skip_pixels=4, save_freq=15000, episode_nb=5,
+                target_update_freq=5000, star=None, beatmap_name=None, min_experience=1200, root_dir='./weights',
                 evaluation=False):
 
     env = environment.TaikoEnv(stack_size=stack_size, star=star, beatmap_name=beatmap_name, skip_pixels=skip_pixels)
@@ -249,14 +249,13 @@ def TaikoTrain(lr=0.000025, batch_size=32, stack_size=1, skip_pixels=4, learn_st
 
             new_state, reward, done = env.step(action)
             episode_reward += reward
-            print(episode_reward)
 
             if not done:
                 tt.memory.push(state, action, reward, new_state)
             else:
                 break
-            if tt.steps_done >= learn_start:
-                tt.optimize()
+
+            tt.optimize()
 
             state = new_state
 
@@ -266,14 +265,15 @@ def TaikoTrain(lr=0.000025, batch_size=32, stack_size=1, skip_pixels=4, learn_st
             if tt.steps_done % save_freq == 0:
                 need_save = True
 
-            time.sleep(0.01)
-
-        if need_update: tt.update_target()
-        if need_save: tt.save()
-        tt.avg_reward_plotter.step(reward)
+        if need_update:
+            tt.update_target()
+            need_update = False
+        if need_save:
+            tt.save()
+            need_save = False
+        print(steps)
+        tt.avg_reward_plotter.step(episode_reward)
         tt.avg_reward_plotter.show()
-
-
 
     tt.stop()
 
@@ -295,4 +295,4 @@ if __name__ == '__main__':
                       load_optimizer=None, optimizer_path='./weights/opti.pt', evaluation=False, n=20, data_efficient=True)
     '''
 
-    TaikoTrain(root_dir='./weights/Taiko/')
+    TaikoTrain(root_dir='./weights/Taiko/', episode_nb=50, min_experience=35)

@@ -358,7 +358,7 @@ class TaikoTrainer:
         self.running_loss = 0.0
         self.steps_done = 0
         self.plotter = utils.info_plot.LivePlot(min_y=0, max_y=10.0, num_points=500, y_axis='Average loss')
-        self.avg_reward_plotter = utils.info_plot.LivePlot(min_y=-10, max_y=250, window_x=1270, num_points=500, y_axis='Episode reward', x_axis='Number of episodes')
+        self.avg_reward_plotter = utils.info_plot.LivePlot(min_y=-5, max_y=50, window_x=1270, num_points=500, y_axis='Episode reward', x_axis='Number of episodes')
 
         self.decay = 10000
         self.start = 0.9
@@ -372,9 +372,10 @@ class TaikoTrainer:
             return
         s0, a, r, s1 = self.memory.sample(batch_size=self.batch_size)
         y = self.q_network(s0)
-        state_action_values = y.gather(1, a)
+        state_action_values = torch.stack([y[i, a[i]] for i in range(self.batch_size)])  # Get estimated Q(s1,a1)
+        #t state_action_values = y.gather(0, a)
         next_state_values = self.target_q_network(s1).detach().max(1)[0]
-        expected_state_action_values = r + self.gamma * next_state_values
+        expected_state_action_values = r.squeeze() + self.gamma * next_state_values
         loss = F.mse_loss(state_action_values, expected_state_action_values)
         self.loss_log(loss)
         self.optimizer.zero_grad()
@@ -398,8 +399,7 @@ class TaikoTrainer:
             return self.q_network(state).max(1)[1]
 
     def random_action(self):
-        return torch.tensor([[random.randrange(3)]], device=device, dtype=torch.int)
-
+        return torch.tensor([random.randrange(3)], device=device, dtype=torch.int)
 
     def select_explo_action(self, state):
         # Act epsilon-greedily : If random -> self.random_action() else: self.select_action()

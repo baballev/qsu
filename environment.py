@@ -361,7 +361,6 @@ class TaikoEnv(gym.Env):
         self.skip_pixels = skip_pixels
         self.score_ocr = utils.OCR.init_OCR('./weights/OCR/OCR_score2.pt').to(device)  # OCR model to read score
 
-        self.hc = pyclick.HumanClicker()
         self.process, self.window = utils.osu_routines.start_osu()  # Osu! process + window object after launching game
 
         #self.key_dict = {'w': 0x57, 'x': 0x58, 'c': 0x43, 'v': 0x56}  # Keyboard encoding
@@ -401,8 +400,8 @@ class TaikoEnv(gym.Env):
         time.sleep(1)
         tmp = self.get_obs()
         self.history = torch.zeros((self.stack_size, tmp.shape[0], tmp.shape[1])).to(device)
-        self.history[0] = tmp
-        return self.history.squeeze(0)
+        self.history[-1] = tmp
+        return self.history.unsqueeze(0)
 
     def get_reward(self, score):
         return torch.tensor([max(score - self.previous_score, 0)/1000.0], device=device)
@@ -425,7 +424,9 @@ class TaikoEnv(gym.Env):
             rew = torch.tensor([0.0], device=device)
         else:
             rew = self.get_reward(score)
-        self.previous_score = score
+        if self.steps < 15:
+            done = False
+        self.previous_score = max(self.previous_score, score)
         return self.history.unsqueeze(0), rew, done
 
     def perform_actions(self, control, n=2):  # Control in [0, 2**n - 1]
