@@ -353,6 +353,7 @@ class ManiaEnv(gym.Env):  # Environment use to play the osu! mania mode (only ke
 
 class TaikoEnv(gym.Env):
     def __init__(self, stack_size=1, star=None, beatmap_name=None, skip_pixels=1):
+        super(TaikoEnv, self).__init__()
         self.stack_size = stack_size  # Length of history, number of last frames to pass as state
         self.action_space = spaces.Discrete(4)
         self.observation_space = spaces.Box(low=0, high=1.0, shape=(1, WIDTH//skip_pixels, stack_size))
@@ -383,17 +384,23 @@ class TaikoEnv(gym.Env):
             time.sleep(10)  # Manual selection
 
     def launch_episode(self):
-        utils.screen.start_capture(self.screen) # Init high frequency screen capture
         utils.osu_routines.launch_selected_beatmap() # Click on osu's button to start the beatmap
         time.sleep(0.3)  # Short wait delay
         self.previous_score = 0
 
     def reset(self):
         self.screen.stop()  # Stop high frequency screen capture
-        utils.osu_routines.return_to_beatmap()  # Return to beatmap selection menu
+        if self.episode_counter > 0:
+            utils.osu_routines.return_to_beatmap()  # Return to beatmap selection menu
         self.episode_counter += 1
         self.steps = 0
-        return
+        self.previous_score = 0
+        utils.screen.start_capture(self.screen) # Init high frequency screen capture
+        time.sleep(1)
+        tmp = self.get_obs()
+        self.history = torch.zeros((self.stack_size, tmp.shape[0], tmp.shape[1])).to(device)
+        self.history[0] = tmp
+        return self.history.squeeze(0)
 
     def get_reward(self, score):
         return torch.tensor([max(score - self.previous_score, 0)/1000.0], device=device)
@@ -407,7 +414,7 @@ class TaikoEnv(gym.Env):
         self.last_action = action
         #Wait ?
         if self.stack_size > 1:
-            self.history[:-1] = self.history[1:]  # Roll stack TODO check if its ok with stack_size = 1
+            self.history[:-1] = self.history[1:]
         self.history[-1] = self.get_obs()
         score = utils.OCR.get_score(self.screen, self.score_ocr, self.window)  #TODO retrain for taiko ocr?
         done = (score == -1)
@@ -417,7 +424,7 @@ class TaikoEnv(gym.Env):
 
     def perform_actions(self, control, n=2):  # Control in [0, 2**n - 1]
         key_encoding = []
-        q, r = divmod(control, 2 ** (n - 1))
+        q, r = divmod(control.item(), 2 ** (n - 1))
         key_encoding.append(q)
         i = 0
         for _ in range(n - 1):

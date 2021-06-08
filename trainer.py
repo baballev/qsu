@@ -387,7 +387,6 @@ class TaikoTrainer:
         if self.steps_done % log_mod == 0:
             self.plotter.step(self.running_loss/log_mod)
             self.running_loss = 0.0
-        self.steps_done += 1
         return
 
     def disp_log(self):
@@ -405,13 +404,15 @@ class TaikoTrainer:
         # Act epsilon-greedily : If random -> self.random_action() else: self.select_action()
         r = random.random()
         threshold = self.end + (self.start - self.end) * math.exp(-1.0 * self.steps_done / self.decay)
-        if r > threshold:
+        if r < threshold:
             return self.random_action()
         else:
             return self.select_action(state)
+        self.steps_done += 1
 
     def update_target(self):
-        pass
+        self.target_q_network.load_state_dict(self.q_network.state_dict())
+        return
 
     def save(self): # ToDO: add epsilon scheduler, plotter with counter,
         self.checkpointer.save(self.memory, self.target_q_network, self.optimizer)

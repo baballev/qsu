@@ -228,19 +228,50 @@ def RainbowManiaTrain(lr=0.0000625, batch_size=32, gamma=0.999, omega=0.5, beta=
             need_save = True
 
 
-def TaikoTrain(lr=0.000025, batch_size=32, stack_size=4, skip_pixels=4, learn_start=12000, save_freq=30000, episode_nb=5,
-                      target_update_freq=10000, star=None, beatmap_name=None, min_experience=25000, root_dir='./weights'):
+def TaikoTrain(lr=0.000025, batch_size=32, stack_size=1, skip_pixels=4, learn_start=12000, save_freq=30000, episode_nb=5,
+                target_update_freq=10000, star=None, beatmap_name=None, min_experience=25000, root_dir='./weights',
+                evaluation=False):
 
     env = environment.TaikoEnv(stack_size=stack_size, star=star, beatmap_name=beatmap_name, skip_pixels=skip_pixels)
     tt = TaikoTrainer(env, batch_size=batch_size, lr=lr, gamma=GAMMA, root_dir=root_dir, min_experience=min_experience, norm_clip=10.0)
 
+    need_update = False
+    need_save = False
     for episode in range(episode_nb):
         state = env.reset()
         env.launch_episode()
-        '''
+        episode_reward = 0.0
         for steps in range(MAX_STEPS):
-            pass
-        '''
+            if evaluation:
+                action = tt.select_action(state)
+            else:
+                action = tt.select_explo_action(state)
+
+            new_state, reward, done = env.step(action)
+            episode_reward += reward
+
+            if not done:
+                tt.memory.push(state, action, reward, new_state)
+
+            if tt.steps_done >= learn_start:
+                tt.optimize()
+
+            state = new_state
+
+
+            # These boolean allow the program to wait for the end of the episode before performing the updates or the save to avoid latency while the agent is playing
+            if tt.steps_done % target_update_freq == 0:
+                need_update = True
+            if tt.steps_done % save_freq == 0:
+                need_save = True
+
+            time.sleep(0.01)
+
+        if need_update: tt.update_target()
+        if need_save: tt.save()
+        tt.avg_reward_plotter.step(reward)
+        tt.avg_reward_plotter.show()
+
 
 
     tt.stop()
