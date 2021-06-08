@@ -237,12 +237,13 @@ def TaikoTrain(lr=0.000025, batch_size=32, stack_size=4, skip_pixels=4, learn_st
     for episode in range(episode_nb):
         state = env.reset()
         env.launch_episode()
-        tt.save()
         '''
         for steps in range(MAX_STEPS):
             pass
         '''
 
+
+    tt.stop()
 
 
 if __name__ == '__main__':

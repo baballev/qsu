@@ -352,11 +352,41 @@ class TaikoTrainer:
             self.optimizer = torch.load(load_optimizer)
 
         self.min_experience = min_experience
+
+        self.running_loss = 0.0
+        self.counter = 0
+        self.plotter = utils.info_plot.LivePlot(min_y=0, max_y=10.0, num_points=500, y_axis='Average loss')
+        self.avg_reward_plotter = utils.info_plot.LivePlot(min_y=-10, max_y=250, window_x=1270, num_points=500, y_axis='Episode reward', x_axis='Number of episodes')
+
         total_params = sum(p.numel() for p in self.q_network.parameters())
         print('Number of parameters: %d' % total_params)
 
     def optimize(self):
-        pass
+        if len(self.memory) < self.min_experience:
+            return
+        s0, a, r, s1 = self.memory.sample(batch_size=self.batch_size)
+        y = self.q_network(s0)
+        state_action_values = y.gather(1, a)
+        next_state_values = self.target_q_network(s1).detach().max(1)[0]
+        expected_state_action_values = r + self.gamma * next_state_values
+        loss = F.mse_loss(state_action_values, expected_state_action_values)
+        self.loss_log(loss)
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+        return
+
+    def loss_log(self, loss, log_mod=200):
+        self.running_loss += loss.detach()
+        if self.counter % log_mod == 0:
+            self.plotter.step(self.running_loss/log_mod)
+            self.running_loss = 0.0
+        self.counter += 1
+        return
+
+    def disp_log(self):
+        self.plotter.show()
+        return
 
     def select_action(self):
         pass
@@ -373,6 +403,9 @@ class TaikoTrainer:
 
     def save(self):
         self.checkpointer.save(self.memory, self.target_q_network, self.optimizer)
+
+    def stop(self):
+        pass # TODO: Save + process stop, resume screen resolution
 
 
 if __name__ == '__main__':
