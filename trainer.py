@@ -340,7 +340,7 @@ class TaikoTrainer:
         self.q_network = models.TaikoNetwork(input_dim=self.env.observation_space.shape[1]).to(device)
         self.target_q_network = models.TaikoNetwork(input_dim=self.env.observation_space.shape[1]).to(device)
 
-        load_memory, load_optimizer, load_network = self.checkpointer.load()
+        load_memory, load_optimizer, load_network, load_steps = self.checkpointer.load()
         if load_network is not None:
             self.q_nework.load_state_dict(torch.load(load_network))
             self.target_q_network.load_state_dict(torch.load(load_network))
@@ -352,11 +352,14 @@ class TaikoTrainer:
             self.optimizer = torch.optim.Adam(self.q_network.parameters(), lr=self.lr, eps=eps)
         else:
             self.optimizer = torch.load(load_optimizer)
+        if load_steps is not None:
+            self.steps_done = pickle.load(open(load_steps, 'rb'))
+        else:
+            self.steps_done = 0
 
         self.min_experience = min_experience
 
         self.running_loss = 0.0
-        self.steps_done = 0
         self.plotter = utils.info_plot.LivePlot(min_y=0, max_y=10.0, num_points=500, y_axis='Average loss')
         self.avg_reward_plotter = utils.info_plot.LivePlot(min_y=-5, max_y=50, window_x=1270, num_points=500, y_axis='Episode reward', x_axis='Number of episodes')
 
@@ -366,6 +369,7 @@ class TaikoTrainer:
 
         total_params = sum(p.numel() for p in self.q_network.parameters())
         print('Number of parameters: %d' % total_params)
+        print(self.target_q_network)
 
     def optimize(self):
         if len(self.memory) < self.min_experience:
@@ -405,21 +409,23 @@ class TaikoTrainer:
         # Act epsilon-greedily : If random -> self.random_action() else: self.select_action()
         r = random.random()
         threshold = self.end + (self.start - self.end) * math.exp(-1.0 * self.steps_done / self.decay)
+        self.steps_done += 1
         if r < threshold:
             return self.random_action()
         else:
             return self.select_action(state)
-        self.steps_done += 1
 
     def update_target(self):
         self.target_q_network.load_state_dict(self.q_network.state_dict())
         return
 
-    def save(self): # ToDO: add epsilon scheduler, plotter with counter,
-        self.checkpointer.save(self.memory, self.target_q_network, self.optimizer)
+    def save(self): # ToDO: plotter with counter,
+        self.checkpointer.save(self.memory, self.target_q_network, self.optimizer, self.steps_done)
 
     def stop(self):
-        pass # TODO: Save + process stop, resume screen resolution
+        self.save()
+        self.env.stop()
+        return
 
 
 if __name__ == '__main__':

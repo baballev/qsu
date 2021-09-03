@@ -429,6 +429,9 @@ class TaikoEnv(gym.Env):
         self.previous_score = max(self.previous_score, score)
         return self.history.unsqueeze(0), rew, done
 
+    def stop(self):
+        utils.osu_routines.stop_osu(self.process)
+
     def perform_actions(self, control, n=2):  # Control in [0, 2**n - 1]
         if control.item() == 1:
             pyautogui.click(button='left')
