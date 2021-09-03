@@ -342,7 +342,7 @@ class TaikoTrainer:
 
         load_memory, load_optimizer, load_network, load_steps = self.checkpointer.load()
         if load_network is not None:
-            self.q_nework.load_state_dict(torch.load(load_network))
+            self.q_network.load_state_dict(torch.load(load_network))
             self.target_q_network.load_state_dict(torch.load(load_network))
         if load_memory is None:
             self.memory = ReplayMemory2(1000000)  # Approx 5 GB memory assuming 600 dim float32 tensors for state, TODO: optimize, there's redundancy

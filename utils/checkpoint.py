@@ -32,7 +32,7 @@ class Checkpointer:
             if len(os.listdir(root_dir)) == 0:
                 self.loading = False
             else:
-                if len(os.listdir(root_dir)) == 3:
+                if len(os.listdir(root_dir)) == 4:
                     if os.path.exists(os.path.join(root_dir, self.memory_name)):
                         self.loading = True
                     else:

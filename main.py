@@ -1,5 +1,5 @@
 import pickle
-from random import random, randint
+from random import random
 import torch
 import time
 import pyautogui
