@@ -6,6 +6,7 @@ import torch.nn.functional as F
 import time
 import pickle
 import bz2
+import _pickle as cPickle
 
 import models
 import utils.noise
@@ -347,13 +348,15 @@ class TaikoTrainer:
         if load_memory is None:
             self.memory = ReplayMemory2(1000000)  # Approx 5 GB memory assuming 600 dim float32 tensors for state, TODO: optimize, there's redundancy
         else:
-            self.memory = pickle.load(open(load_memory, 'rb'))
+            with bz2.open(load_memory, 'rb') as f:
+                self.memory = cPickle.load(f)
         if load_optimizer is None:
             self.optimizer = torch.optim.Adam(self.q_network.parameters(), lr=self.lr, eps=eps)
         else:
             self.optimizer = torch.load(load_optimizer)
         if load_steps is not None:
-            self.steps_done = pickle.load(open(load_steps, 'rb'))
+            with bz2.open(load_memory, 'rb') as f:
+                self.steps_done = cPickle.load(f)
         else:
             self.steps_done = 0
 

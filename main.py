@@ -294,4 +294,4 @@ if __name__ == '__main__':
                       load_optimizer=None, optimizer_path='./weights/opti.pt', evaluation=False, n=20, data_efficient=True)
     '''
 
-    TaikoTrain(root_dir='./weights/Taiko/2021-09-03_4/4/', episode_nb=10, min_experience=200, target_update_freq=400, save_freq=500)
+    TaikoTrain(root_dir='./weights/Taiko/2021-09-03_4/2/', episode_nb=10, min_experience=200, target_update_freq=400, save_freq=500)
