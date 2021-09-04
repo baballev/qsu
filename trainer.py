@@ -346,7 +346,7 @@ class TaikoTrainer:
             self.q_network.load_state_dict(torch.load(load_network))
             self.target_q_network.load_state_dict(torch.load(load_network))
         if load_memory is None:
-            self.memory = ReplayMemory2(1000000)  # Approx 5 GB memory assuming 600 dim float32 tensors for state, TODO: optimize, there's redundancy
+            self.memory = ReplayMemory2(min_experience)  # Approx 5 GB memory assuming 600 dim float32 tensors for state, TODO: optimize, there's redundancy
         else:
             with bz2.open(load_memory, 'rb') as f:
                 self.memory = cPickle.load(f)
@@ -367,7 +367,7 @@ class TaikoTrainer:
         self.avg_reward_plotter = utils.info_plot.LivePlot(min_y=-5, max_y=50, window_x=1270, num_points=500, y_axis='Episode reward', x_axis='Number of episodes')
 
         self.decay = 10000
-        self.start = 0.9
+        self.start = 0.99
         self.end = 0.05
 
         total_params = sum(p.numel() for p in self.q_network.parameters())

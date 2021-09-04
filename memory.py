@@ -45,20 +45,22 @@ class ReplayMemory(object):
 class ReplayMemory2(object): # TODO: inheritance correctly ....
     def __init__(self, capacity):
         self.capacity = capacity
-        self.memory = []
+        self.memory = torch.empty((capacity, 4, 1, 1, 150)).to(device)
         self.position = 0
 
     def push(self, *args):
-        if len(self.memory) < self.capacity:
-            self.memory.append(None)
-        self.memory[self.position] = Transition2(args[0].squeeze(0), args[1].squeeze(0), args[2], args[3].squeeze(0))
+        self.memory[self.position][0] = args[0].squeeze(0)
+        self.memory[self.position][1][0, 0, 0] = args[1].squeeze(0)
+        self.memory[self.position][2][0, 0, 0] = args[2]
+        self.memory[self.position][3] = args[3].squeeze(0)
         self.position = (self.position + 1) % self.capacity
 
     def sample(self, batch_size):
-        batch = random.sample(self.memory, batch_size)
+        sampling = torch.randint_like(torch.zeros(batch_size), 0, self.capacity, dtype=torch.long).to(device)
+        batch = [self.memory[i] for i in sampling]
         s = torch.stack([a[0] for a in batch])
-        a = torch.stack([a[1] for a in batch])
-        r = torch.stack([a[2] for a in batch])
+        a = torch.stack([a[1][0, 0, 0].type(torch.long) for a in batch])
+        r = torch.stack([a[2][0, 0, 0] for a in batch])
         s1 = torch.stack([a[3] for a in batch])
 
         return s, a, r, s1

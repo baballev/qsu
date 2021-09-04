@@ -228,8 +228,8 @@ def RainbowManiaTrain(lr=0.0000625, batch_size=32, gamma=0.999, omega=0.5, beta=
             need_save = True
 
 
-def TaikoTrain(lr=0.00008, batch_size=32, stack_size=1, skip_pixels=4, save_freq=30000, episode_nb=5,
-                target_update_freq=10000, star=None, beatmap_name=None, min_experience=2500, root_dir='./weights',
+def TaikoTrain(lr=0.00008, batch_size=32, stack_size=1, skip_pixels=4, save_freq=20000, episode_nb=5,
+                target_update_freq=10000, star=None, beatmap_name=None, min_experience=10000, root_dir='./weights',
                 evaluation=False):
 
     env = environment.TaikoEnv(stack_size=stack_size, star=star, beatmap_name=beatmap_name, skip_pixels=skip_pixels)
@@ -251,11 +251,11 @@ def TaikoTrain(lr=0.00008, batch_size=32, stack_size=1, skip_pixels=4, save_freq
             episode_reward += reward
 
             if not done:
-                tt.memory.push(state, action, reward, new_state)
+                th = Thread(target=tt.memory.push,
+                            args=(state, action, reward, new_state))
+                th.start()
             else:
                 break
-
-            tt.optimize()
 
             state = new_state
             # These boolean allow the program to wait for the end of the episode before performing the updates or the save to avoid latency while the agent is playing
@@ -263,6 +263,9 @@ def TaikoTrain(lr=0.00008, batch_size=32, stack_size=1, skip_pixels=4, save_freq
                 need_update = True
             if tt.steps_done % save_freq == 0:
                 need_save = True
+
+        for _ in range(steps):
+            tt.optimize()
 
         if need_update:
             tt.update_target()
@@ -294,4 +297,4 @@ if __name__ == '__main__':
                       load_optimizer=None, optimizer_path='./weights/opti.pt', evaluation=False, n=20, data_efficient=True)
     '''
 
-    TaikoTrain(root_dir='./weights/Taiko/2021-09-03_4/2/', episode_nb=10, min_experience=200, target_update_freq=400, save_freq=500)
+    TaikoTrain(root_dir='./weights/Taiko/', episode_nb=1500, min_experience=1500, save_freq=5000, target_update_freq=2000, batch_size=16, lr=0.0002)
