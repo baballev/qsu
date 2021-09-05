@@ -350,12 +350,11 @@ class TaikoTrainer:
         else:
             with bz2.open(load_memory, 'rb') as f:
                 self.memory = cPickle.load(f)
-        if load_optimizer is None:
-            self.optimizer = torch.optim.Adam(self.q_network.parameters(), lr=self.lr, eps=eps)
-        else:
-            self.optimizer = torch.load(load_optimizer)
+        self.optimizer = torch.optim.Adam(self.q_network.parameters(), lr=self.lr, eps=eps)
+        if load_optimizer is not None:
+            self.optimizer.load_state_dict(torch.load(load_optimizer))
         if load_steps is not None:
-            with bz2.open(load_memory, 'rb') as f:
+            with bz2.open(load_steps, 'rb') as f:
                 self.steps_done = cPickle.load(f)
         else:
             self.steps_done = 0
